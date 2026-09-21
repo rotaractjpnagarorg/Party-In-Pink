@@ -52,13 +52,7 @@ export const TermsPage: React.FC = () => {
               complications.
             </p>
 
-            <h2 className="text-lg font-bold text-slate-900 pt-4">3. Attire & Conduct</h2>
-            <p>
-              To maximize charitable contributions directly to cancer patient care,{' '}
-              <strong>no complimentary T-shirts are provided</strong>. All participants are warmly
-              encouraged to wear their favorite pink clothing, traditional attire, or sports gear to
-              show solidarity with the cause.
-            </p>
+            <h2 className="text-lg font-bold text-slate-900 pt-4">3. Participant Conduct</h2>
             <p>
               All attendees are expected to uphold the ideals of Rotary and maintain respectful,
               courteous behavior toward volunteers, fellow participants, marshals, and the host

@@ -95,9 +95,8 @@ export function generateBulkRegistrationTemplateWorkbook(): ExcelJS.Workbook {
     '2. Mandatory Columns: Full Name, Email Address, and 10-Digit Mobile Number are required for every participant.',
     '3. Unique Email: Each attendee receives an individual digital ticket & entry pass via email.',
     '4. Column Headers: Please DO NOT rename, reorder, or delete column headers on the "Participants" sheet.',
-    '5. Attire Note: Wear pink clothing! No complimentary T-shirts are provided to maximize direct cancer screening donations.',
-    '6. Payment: Group lead submits payment once for the total count via direct UPI or SBI Bank Transfer.',
-    '7. Need Assistance? Contact our volunteer desk: partyinpink.rotaract@gmail.com',
+    '5. Payment: Group lead submits payment once for the total count via direct UPI or SBI Bank Transfer.',
+    '6. Need Assistance? Contact our volunteer desk: partyinpink.rotaract@gmail.com',
   ].forEach((line) => instructions.addRow([line]));
   instructions.getRow(1).font = { bold: true, size: 14 };
   instructions.getRow(4).font = { bold: true };

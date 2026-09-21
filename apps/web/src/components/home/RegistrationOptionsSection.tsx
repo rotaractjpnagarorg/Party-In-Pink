@@ -17,7 +17,7 @@ export const RegistrationOptionsSection: React.FC = () => {
   ];
 
   const bulkPerks = [
-    'Discounted rate of only ₹219 per attendee',
+    'Discounted group rates starting at ₹219 per attendee',
     'Convenient offline XLSX spreadsheet upload',
     'Club / Corporate banner recognition on social media',
     'Reserved group assembly desk on event morning',
@@ -38,10 +38,6 @@ export const RegistrationOptionsSection: React.FC = () => {
           <p className="mt-3 text-base text-slate-600">
             Open to everyone! Join as an individual or bring your club, college, or company team.
           </p>
-          <div className="mt-3 inline-block bg-pink-50 border border-pink-200 text-pip-800 text-xs px-3.5 py-1 rounded-full font-medium">
-            💡 <strong>Attire Note:</strong> Come dressed in your favorite pink clothing! (No
-            T-shirts provided)
-          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
@@ -104,7 +100,7 @@ export const RegistrationOptionsSection: React.FC = () => {
                   <Users className="w-6 h-6" />
                 </div>
                 <span className="text-xs font-bold uppercase tracking-wider bg-pip-100 text-pip-800 px-3 py-1 rounded-full border border-pip-200">
-                  Bulk Savings (Min {event.pricesPaise.bulkMinParticipants})
+                  Bulk Savings (Min 10 passes)
                 </span>
               </div>
               <h3 className="text-2xl font-extrabold text-slate-900">Group / Club / Corporate</h3>
@@ -117,7 +113,7 @@ export const RegistrationOptionsSection: React.FC = () => {
                   {formatINR(event.pricesPaise.bulkPass)}
                 </span>
                 <span className="text-slate-500 text-sm ml-2 font-medium">
-                  / attendee (₹20 savings)
+                  / attendee onwards
                 </span>
               </div>
 

@@ -26,11 +26,6 @@ export const FaqSection: React.FC = () => {
         'Not at all! Party In Pink is about purpose, energy, and community—not perfection. Our certified Zumba instructors lead simple, uplifting routines that everyone from absolute beginners to regular fitness enthusiasts can enjoy.',
     },
     {
-      question: 'Are T-shirts provided with registration?',
-      answer:
-        'Physical T-shirts are not included with registration. We warmly encourage every participant to wear a favorite pink top, T-shirt, or other pink attire on event morning.',
-    },
-    {
       question: 'How do I pay for my pass?',
       answer:
         'PiP Pay enables direct payment to our official State Bank of India (SBI) account via UPI (Google Pay, PhonePe, Paytm, BHIM) or Direct Bank Transfer (NEFT/IMPS/RTGS). After completing payment in your bank app, upload your receipt screenshot or enter your UTR number for prompt approval.',

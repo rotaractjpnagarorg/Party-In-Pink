@@ -50,13 +50,24 @@ export const RotaryFamilyAffiliations = [
 ] as const;
 
 export function getBulkMinParticipants(organisationType?: string | null): number {
-  if (organisationType === AffiliationTypes.ROTARACT_UNIVERSITY) {
+  if (
+    organisationType === AffiliationTypes.ROTARACT_UNIVERSITY ||
+    organisationType === AffiliationTypes.ROTARACT_COMMUNITY ||
+    organisationType === AffiliationTypes.ROTARACT_CLUB
+  ) {
     return 15;
   }
-  if (organisationType === AffiliationTypes.ROTARACT_COMMUNITY) {
-    return 10;
+  return 10;
+}
+
+export function getBulkPassPricePaise(organisationType?: string | null): number {
+  if (organisationType === AffiliationTypes.ROTARY_CLUB) {
+    return 59900; // ₹599 for Rotary clubs
   }
-  return 5;
+  if (organisationType === AffiliationTypes.COMPANY) {
+    return 39900; // ₹399 for corporate tickets
+  }
+  return 21900; // ₹219 for Rotaract, Interact, College, NGO, etc.
 }
 
 export const OrganisationRequiredAffiliations = [

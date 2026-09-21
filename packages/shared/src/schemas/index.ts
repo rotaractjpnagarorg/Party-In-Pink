@@ -126,7 +126,7 @@ export const bulkOrderCreateSchema = z
     participantCount: z
       .number()
       .int()
-      .min(5, 'Bulk registration requires at least 5 participants')
+      .min(10, 'Bulk registration requires at least 10 participants')
       .max(500, 'Bulk registration cannot exceed 500 participants per order'),
   })
   .superRefine((data, ctx) => {

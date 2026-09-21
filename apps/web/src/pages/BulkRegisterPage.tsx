@@ -23,6 +23,7 @@ import {
   parseBulkRegistrationXlsx,
   generateBulkRegistrationTemplateBuffer,
   getBulkMinParticipants,
+  getBulkPassPricePaise,
   type BulkAttendeeRowInput,
 } from '@pip/shared';
 import { functions } from '../services/firebase.js';
@@ -50,9 +51,7 @@ export const BulkRegisterPage: React.FC = () => {
   const handleOrgTypeChange = (newType: string) => {
     setOrgType(newType);
     const newMin = getBulkMinParticipants(newType);
-    if (initialCount < newMin) {
-      setInitialCount(newMin);
-    }
+    setInitialCount(newMin);
   };
 
   const handleCountChange = (value: number) => {
@@ -272,11 +271,11 @@ export const BulkRegisterPage: React.FC = () => {
     );
   }
 
-  const bulkPrice = event.pricesPaise.bulkPass; // ₹149
-  const singlePrice = event.pricesPaise.singlePass; // ₹199
+  const bulkPrice = getBulkPassPricePaise(orgType);
+  const singlePrice = event.pricesPaise.singlePass; // ₹239
   const countToDisplay = parsedAttendees.length > 0 ? parsedAttendees.length : initialCount;
   const totalAmountPaise = countToDisplay * bulkPrice;
-  const savingsPaise = countToDisplay * (singlePrice - bulkPrice);
+  const savingsPaise = Math.max(0, countToDisplay * (singlePrice - bulkPrice));
 
   return (
     <div className="py-10 bg-slate-50 min-h-screen">
@@ -286,8 +285,7 @@ export const BulkRegisterPage: React.FC = () => {
           <div className="inline-flex items-center space-x-2 text-xs font-bold text-pip-700 bg-pip-50 px-3 py-1 rounded-full mb-2 border border-pip-200">
             <Users className="w-3.5 h-3.5" />
             <span>
-              Group & Corporate Registration • {formatINR(bulkPrice)}/pass (Min.{' '}
-              {event.pricesPaise.bulkMinParticipants} attendees)
+              Group & Corporate Registration • Starting at ₹219/pass
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
@@ -382,25 +380,25 @@ export const BulkRegisterPage: React.FC = () => {
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-pip-500 bg-white"
                     >
                       <option value={AffiliationTypes.ROTARACT_UNIVERSITY}>
-                        Rotaract Club - University Based (Min. 15 passes)
+                        Rotaract Club - University Based (Min. 15 passes • ₹219/pass)
                       </option>
                       <option value={AffiliationTypes.ROTARACT_COMMUNITY}>
-                        Rotaract Club - Community Based (Min. 10 passes)
+                        Rotaract Club - Community Based (Min. 15 passes • ₹219/pass)
                       </option>
                       <option value={AffiliationTypes.ROTARY_CLUB}>
-                        Rotary Club (Min. 5 passes)
-                      </option>
-                      <option value={AffiliationTypes.INTERACT_CLUB}>
-                        Interact Club (Min. 5 passes)
+                        Rotary Club (Min. 10 passes • ₹599/pass)
                       </option>
                       <option value={AffiliationTypes.COMPANY}>
-                        Company / Corporate Team (Min. 5 passes)
+                        Company / Corporate Team (Min. 10 passes • ₹399/pass)
+                      </option>
+                      <option value={AffiliationTypes.INTERACT_CLUB}>
+                        Interact Club (Min. 10 passes • ₹219/pass)
                       </option>
                       <option value={AffiliationTypes.NGO_ASSOCIATION}>
-                        NGO / Non-Profit Association (Min. 5 passes)
+                        NGO / Non-Profit Association (Min. 10 passes • ₹219/pass)
                       </option>
                       <option value={AffiliationTypes.OTHER_ORGANISATION}>
-                        College / Educational Institution (Min. 5 passes)
+                        College / Educational Institution (Min. 10 passes • ₹219/pass)
                       </option>
                     </select>
                   </div>
@@ -453,7 +451,7 @@ export const BulkRegisterPage: React.FC = () => {
                         Estimated Participant Count / Number of Passes (Min. {minRequired}) *
                       </label>
                       <span className="text-xs font-bold text-pip-600 bg-pip-50 px-2 py-0.5 rounded border border-pip-200 font-mono">
-                        ₹219 / pass
+                        {formatINR(bulkPrice)} / pass
                       </span>
                     </div>
                     <input
@@ -469,11 +467,13 @@ export const BulkRegisterPage: React.FC = () => {
                     <div className="mt-2.5 p-3.5 bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 rounded-2xl flex items-center justify-between text-xs">
                       <div>
                         <span className="text-slate-700 font-semibold block">
-                          Automated Calculation: <strong className="font-mono">{initialCount}</strong> passes × ₹219
+                          Automated Calculation: <strong className="font-mono">{initialCount}</strong> passes × {formatINR(bulkPrice)}
                         </span>
-                        <span className="text-emerald-700 font-bold">
-                          Total Instant Savings: {formatINR(savingsPaise)}
-                        </span>
+                        {savingsPaise > 0 && (
+                          <span className="text-emerald-700 font-bold">
+                            Total Instant Savings: {formatINR(savingsPaise)}
+                          </span>
+                        )}
                       </div>
                       <span className="font-extrabold text-pip-700 text-lg font-mono">
                         {formatINR(totalAmountPaise)}
@@ -655,31 +655,27 @@ export const BulkRegisterPage: React.FC = () => {
                     <span className="font-bold text-pip-600 font-mono text-base">{initialCount} passes</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Discounted Pass</span>
+                    <span>{bulkPrice < singlePrice ? 'Discounted Pass' : 'Pass Price'}</span>
                     <span className="font-bold text-slate-900">{formatINR(bulkPrice)} / pass</span>
                   </div>
-                  <div className="flex justify-between text-xs text-slate-500">
-                    <span>Standard Individual Rate</span>
-                    <span className="line-through">{formatINR(singlePrice)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-emerald-600 font-semibold">
-                    <span>Group Savings per Pass</span>
-                    <span>Save {formatINR(singlePrice - bulkPrice)}</span>
-                  </div>
+                  {singlePrice > bulkPrice && (
+                    <>
+                      <div className="flex justify-between text-xs text-slate-500">
+                        <span>Standard Individual Rate</span>
+                        <span className="line-through">{formatINR(singlePrice)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-emerald-600 font-semibold">
+                        <span>Group Savings per Pass</span>
+                        <span>Save {formatINR(singlePrice - bulkPrice)}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="pt-2 border-t border-dashed border-slate-200 flex justify-between text-base font-extrabold text-slate-900">
                     <span>Total Amount</span>
                     <span className="font-mono text-pip-600 text-xl font-extrabold">
                       {formatINR(totalAmountPaise)}
                     </span>
                   </div>
-                </div>
-
-                <div className="p-3.5 bg-pink-50 rounded-2xl border border-pink-200 text-xs text-pink-900 space-y-1">
-                  <p className="font-bold">Attire Notice</p>
-                  <p className="text-pink-800">
-                    All attendees come dressed in pink clothing. Complimentary T-shirts are not
-                    included; please wear your favorite pink attire for the event.
-                  </p>
                 </div>
               </div>
             </div>

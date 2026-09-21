@@ -21,7 +21,7 @@ describe('SingleRegisterPage Component', () => {
     expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Mobile Number \(10 Digits\)/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/I am participating as/i)).toBeInTheDocument();
-    expect(screen.getByText(/Pink Attire Notice/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mandatory Consents/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Order Summary/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/₹239/i).length).toBeGreaterThan(0);
   });

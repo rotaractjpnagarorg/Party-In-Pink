@@ -31,10 +31,16 @@ describe('BulkRegisterPage Component', () => {
     expect(screen.getAllByText(/Special Group Tier/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/₹219/i).length).toBeGreaterThan(0);
     expect(
-      screen.getByRole('option', { name: /Rotaract Club - University Based \(Min\. 15 passes\)/i })
+      screen.getByRole('option', { name: /Rotaract Club - University Based \(Min\. 15 passes • ₹219\/pass\)/i })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('option', { name: /Rotaract Club - Community Based \(Min\. 10 passes\)/i })
+      screen.getByRole('option', { name: /Rotaract Club - Community Based \(Min\. 15 passes • ₹219\/pass\)/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: /Rotary Club \(Min\. 10 passes • ₹599\/pass\)/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: /Company \/ Corporate Team \(Min\. 10 passes • ₹399\/pass\)/i })
     ).toBeInTheDocument();
   });
 });

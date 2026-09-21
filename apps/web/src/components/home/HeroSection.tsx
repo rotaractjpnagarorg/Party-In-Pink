@@ -127,25 +127,39 @@ export const HeroSection: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-col items-center justify-center gap-3.5 pt-2 sm:flex-row sm:pt-4">
+          <div className="w-full max-w-xl mx-auto pt-3 sm:pt-4">
             {isRegistrationOpen && (
-              <>
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-center sm:gap-3">
+                {/* 1. Primary CTA: Register Individual */}
                 <Link
                   to="/register"
-                  className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-pip-600 to-pink-500 px-7 py-3.5 text-base font-bold text-white shadow-lg shadow-pip-950/40 transition-all hover:-translate-y-0.5 hover:from-pip-700 hover:to-pink-600 hover:shadow-xl active:translate-y-0 sm:w-auto"
+                  className="inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-pip-600 to-pink-500 px-6 py-3.5 text-sm sm:text-base font-bold text-white shadow-lg shadow-pip-950/40 transition-all hover:-translate-y-0.5 hover:from-pip-700 hover:to-pink-600 hover:shadow-xl active:translate-y-0 sm:w-auto sm:px-7"
                 >
                   <span>Register Individual — {formatINR(event.pricesPaise.singlePass)}</span>
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
 
-                <Link
-                  to="/bulk"
-                  className="hidden w-full items-center justify-center rounded-xl border border-white/30 bg-white/10 px-6 py-3.5 text-base font-bold text-white shadow-sm backdrop-blur-md transition-all hover:border-pink-300 hover:bg-white/20 hover:shadow sm:inline-flex sm:w-auto"
-                >
-                  <Users className="mr-2 h-4 w-4 text-pink-300" />
-                  <span>Group Booking ({formatINR(event.pricesPaise.bulkPass)}/pass)</span>
-                </Link>
-              </>
+                {/* Mobile: 2-column clean secondary grid; Desktop: Inline */}
+                <div className="grid grid-cols-2 gap-2.5 w-full sm:flex sm:w-auto sm:items-center sm:gap-3">
+                  {/* 2. Group Passes */}
+                  <Link
+                    to="/bulk"
+                    className="inline-flex w-full items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-3.5 py-3 text-xs sm:text-sm font-bold text-white shadow-sm backdrop-blur-md transition-all hover:border-pink-300 hover:bg-white/20 hover:shadow sm:w-auto sm:px-5 sm:py-3.5"
+                  >
+                    <Users className="mr-1.5 h-4 w-4 text-pink-300 shrink-0" />
+                    <span>Group Passes</span>
+                  </Link>
+
+                  {/* 3. Donate Button */}
+                  <Link
+                    to="/donate"
+                    className="inline-flex w-full items-center justify-center rounded-2xl border border-pink-300/30 bg-pink-500/20 px-3.5 py-3 text-xs sm:text-sm font-bold text-pink-100 backdrop-blur-md transition-all hover:bg-pink-500/30 sm:w-auto sm:px-5 sm:py-3.5"
+                  >
+                    <Heart className="mr-1.5 h-4 w-4 fill-pink-300 text-pink-300 shrink-0" />
+                    <span>Donate</span>
+                  </Link>
+                </div>
+              </div>
             )}
 
             {isAnnounced && (
@@ -159,14 +173,6 @@ export const HeroSection: React.FC = () => {
                 Party In Pink {event.edition} has concluded. Thank you for your incredible support!
               </div>
             )}
-
-            <Link
-              to="/donate"
-              className="hidden w-full items-center justify-center rounded-xl border border-pink-300/20 bg-pink-500/20 px-5 py-3.5 text-base font-semibold text-pink-100 backdrop-blur-md transition-colors hover:bg-pink-500/30 sm:inline-flex sm:w-auto"
-            >
-              <Heart className="mr-1.5 h-4 w-4 fill-pink-300 text-pink-300" />
-              <span>Donate Directly</span>
-            </Link>
           </div>
 
           <div className="mx-auto hidden max-w-lg pt-8 sm:block">

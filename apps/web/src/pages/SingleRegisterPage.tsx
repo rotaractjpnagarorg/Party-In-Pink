@@ -11,7 +11,6 @@ import {
   Shield,
   Heart,
   Sparkles,
-  Info,
   Loader2,
 } from 'lucide-react';
 import { useEvent } from '../context/EventContext.js';
@@ -478,23 +477,11 @@ export const SingleRegisterPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Section 3: Attire & Mandatory Consents */}
+              {/* Section 3: Mandatory Consents */}
               <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
                 <div className="flex items-center space-x-2 pb-3 border-b border-slate-100">
                   <Shield className="w-5 h-5 text-pip-600" />
-                  <h2 className="text-lg font-bold text-slate-900">Event Notice & Consents</h2>
-                </div>
-
-                {/* Attire Reminder */}
-                <div className="p-4 rounded-2xl bg-pink-50 border border-pink-200 flex items-start space-x-3 text-pip-900 text-xs sm:text-sm">
-                  <Info className="w-5 h-5 text-pip-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold">Pink Attire Notice (No T-Shirts Provided)</p>
-                    <p className="mt-1 text-pink-800">
-                      <strong>No complimentary T-shirts are provided</strong>. Please come dressed
-                      in your favorite pink clothing or athletic wear!
-                    </p>
-                  </div>
+                  <h2 className="text-lg font-bold text-slate-900">Mandatory Consents</h2>
                 </div>
 
                 <div className="space-y-3 pt-2">

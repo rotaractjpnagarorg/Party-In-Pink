@@ -8,6 +8,7 @@ import {
   EventStatuses,
   OrderStatuses,
   PaymentStatuses,
+  getBulkPassPricePaise,
   type Order,
 } from '@pip/shared';
 
@@ -42,8 +43,8 @@ export const createBulkOrder = onCall(
       );
     }
 
-    // Calculate pricing based on bulk pass pricing
-    const unitPricePaise = eventData.pricesPaise?.bulkPass || 21900;
+    // Calculate pricing based on bulk pass pricing for the selected group type
+    const unitPricePaise = getBulkPassPricePaise(data.organisationType);
     const totalAmountPaise = data.participantCount * unitPricePaise;
 
     const publicReference = generateReference(REFERENCE_PREFIXES.BULK);

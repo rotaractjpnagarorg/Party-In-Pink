@@ -9,6 +9,7 @@ import {
   TicketStatuses,
   bulkAttendeeRowSchema,
   getBulkMinParticipants,
+  getBulkPassPricePaise,
   type Order,
   type Attendee,
 } from '@pip/shared';
@@ -48,10 +49,10 @@ export const commitBulkAttendees = onCall(
     if (!data?.statusToken || !Array.isArray(data?.attendees)) {
       throw new HttpsError('invalid-argument', 'statusToken and attendees array are required');
     }
-    if (data.attendees.length < 5 || data.attendees.length > 500) {
+    if (data.attendees.length < 10 || data.attendees.length > 500) {
       throw new HttpsError(
         'invalid-argument',
-        'Bulk registration must contain between 5 and 500 attendees.'
+        'Bulk registration must contain between 10 and 500 attendees.'
       );
     }
 
@@ -132,7 +133,7 @@ export const commitBulkAttendees = onCall(
     }
 
     const totalCount = validatedAttendees.length;
-    const unitPricePaise = order.unitPricePaise || 21900;
+    const unitPricePaise = order.unitPricePaise || getBulkPassPricePaise(order.organisationType);
     const totalAmountPaise = totalCount * unitPricePaise;
     const orderRef = db.collection('orders').doc(order.id);
     const eventRef = db.collection('events').doc(DEFAULT_EVENT_CODE);

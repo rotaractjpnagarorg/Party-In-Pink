@@ -159,21 +159,32 @@ export const Header: React.FC = () => {
               </Link>
             );
           })}
-          <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
+          <div className="pt-4 border-t border-slate-100 space-y-2">
             <Link
               to="/register"
               onClick={closeMobile}
-              className="w-full text-center py-3 rounded-xl font-bold text-white bg-pip-600 hover:bg-pip-700 shadow-sm"
+              className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-pip-600 to-pink-500 hover:from-pip-700 hover:to-pink-600 shadow-sm text-sm"
             >
-              Register for PiP {event.edition}
+              <span>Register Individual — {event.pricesPaise?.singlePass ? `₹${event.pricesPaise.singlePass / 100}` : '₹239'}</span>
             </Link>
-            <Link
-              to="/donate"
-              onClick={closeMobile}
-              className="w-full text-center py-2.5 rounded-xl font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 text-sm"
-            >
-              Support the Cause
-            </Link>
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                to="/bulk"
+                onClick={closeMobile}
+                className="flex items-center justify-center space-x-1.5 py-2.5 rounded-xl font-semibold text-pip-700 bg-pip-50 hover:bg-pip-100 border border-pip-200 text-xs text-center"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Group Passes</span>
+              </Link>
+              <Link
+                to="/donate"
+                onClick={closeMobile}
+                className="flex items-center justify-center space-x-1.5 py-2.5 rounded-xl font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-xs text-center"
+              >
+                <Heart className="w-3.5 h-3.5" />
+                <span>Donate</span>
+              </Link>
+            </div>
           </div>
         </div>
       )}
