@@ -1,13 +1,34 @@
 {
-  "name": "party-in-pink",
+  "name": "party-in-pink-monorepo",
+  "version": "5.0.0",
   "private": true,
-  "version": "1.0.0",
-  "license": "MIT",
-  "dependencies": {
-    "@octokit/rest": "^22.0.0",
-    "node-fetch": "^2.7.0",
-    "nodemailer": "^6.9.12",
-    "pdfkit": "^0.15.2",
-    "qrcode": "^1.5.4"
+  "description": "Party In Pink 5.0 Event Platform Monorepo",
+  "workspaces": [
+    "packages/*",
+    "firebase/functions",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@pip/web",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:rules": "firebase emulators:exec --config firebase/firebase.json --project demo-pip5 --only firestore,storage \"vitest run --no-file-parallelism tests/firebase-rules.spec.ts tests/workflow-emulator.spec.ts\"",
+    "test:e2e:local": "npm run build --workspace=@pip/functions && firebase emulators:exec --config firebase/firebase.json --project demo-pip5 --only auth,functions,firestore,storage \"tsx tests/e2e-local-workflow.ts\"",
+    "test:e2e:buyer": "npm run build --workspace=@pip/functions && firebase emulators:exec --config firebase/firebase.json --project demo-pip5 --only auth,functions,firestore,storage \"tsx tests/e2e-samarth-buyer.ts\"",
+    "test:e2e:slack": "npm run build --workspace=@pip/functions && firebase emulators:exec --config firebase/firebase.json --project demo-pip5 --only auth,functions,firestore,storage \"tsx tests/e2e-slack-ticketing.ts\"",
+    "lint": "eslint \"apps/web/src/**/*.{ts,tsx}\" \"firebase/functions/src/**/*.ts\" \"packages/shared/src/**/*.ts\"",
+    "typecheck": "npm run build --workspace=@pip/shared && npm run typecheck --workspace=@pip/functions && npm run typecheck --workspace=@pip/web",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "eslint": "^9.39.2",
+    "firebase-tools": "^15.30.2",
+    "globals": "^16.5.0",
+    "prettier": "^3.5.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.70.0"
   }
 }
