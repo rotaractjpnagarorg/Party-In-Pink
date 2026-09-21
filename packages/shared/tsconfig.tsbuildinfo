@@ -1,0 +1,1 @@
+{"root":["./src/index.spec.ts","./src/index.ts","./src/constants/eventconfig.ts","./src/constants/index.ts","./src/schemas/index.spec.ts","./src/schemas/index.ts","./src/types/index.ts","./src/utils/money.spec.ts","./src/utils/money.ts","./src/utils/xlsx.spec.ts","./src/utils/xlsxparser.ts","./src/utils/xlsxtemplate.ts"],"version":"5.9.3"}
