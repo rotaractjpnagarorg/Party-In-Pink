@@ -10,8 +10,8 @@ export const DEFAULT_PIP5_CONFIG: EventConfig = {
   venue: 'SSMRV College, Jayanagar 4th T Block, Bengaluru',
   venueMapUrl: 'https://maps.google.com/?q=SSMRV+College+Jayanagar+4th+T+Block+Bengaluru',
   pricesPaise: {
-    singlePass: 19900, // ₹199
-    bulkPass: 14900, // ₹149
+    singlePass: 23900, // ₹239
+    bulkPass: 21900, // ₹219
     bulkMinParticipants: 5,
   },
   capacity: {

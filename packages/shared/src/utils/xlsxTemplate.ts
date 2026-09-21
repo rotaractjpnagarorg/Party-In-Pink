@@ -91,7 +91,7 @@ export function generateBulkRegistrationTemplateWorkbook(): ExcelJS.Workbook {
     'Organized by: Rotaract Club of Bangalore JP Nagar (RI District 3191)',
     '',
     'IMPORTANT RULES & GUIDELINES:',
-    '1. Minimum Participants: Bulk group pricing (₹149/pass) applies for 5 or more attendees.',
+    '1. Minimum Participants: Bulk group pricing (₹219/pass) applies for 5 or more attendees.',
     '2. Mandatory Columns: Full Name, Email Address, and 10-Digit Mobile Number are required for every participant.',
     '3. Unique Email: Each attendee receives an individual digital ticket & entry pass via email.',
     '4. Column Headers: Please DO NOT rename, reorder, or delete column headers on the "Participants" sheet.',

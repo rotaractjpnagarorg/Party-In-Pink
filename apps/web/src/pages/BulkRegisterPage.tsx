@@ -249,7 +249,10 @@ export const BulkRegisterPage: React.FC = () => {
         <div className="mb-8">
           <div className="inline-flex items-center space-x-2 text-xs font-bold text-pip-700 bg-pip-50 px-3 py-1 rounded-full mb-2 border border-pip-200">
             <Users className="w-3.5 h-3.5" />
-            <span>Group & Corporate Registration • ₹149/pass (Min. 5 attendees)</span>
+            <span>
+              Group & Corporate Registration • {formatINR(bulkPrice)}/pass (Min.{' '}
+              {event.pricesPaise.bulkMinParticipants} attendees)
+            </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
             Group & Corporate Registration

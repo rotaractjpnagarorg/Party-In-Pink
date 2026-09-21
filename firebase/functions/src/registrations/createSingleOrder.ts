@@ -67,7 +67,7 @@ export const createSingleOrder = onCall(
       }
 
       // Authoritative server-side price calculation (SEC-P0-002)
-      calculatedAmountPaise = eventData.pricesPaise?.singlePass || 19900;
+      calculatedAmountPaise = eventData.pricesPaise?.singlePass || 23900;
 
       // Construct Order document
       const newOrder: Order = {

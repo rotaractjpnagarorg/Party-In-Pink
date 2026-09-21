@@ -43,7 +43,7 @@ export const createBulkOrder = onCall(
     }
 
     // Calculate pricing based on bulk pass pricing
-    const unitPricePaise = eventData.pricesPaise?.bulkPass || 14900;
+    const unitPricePaise = eventData.pricesPaise?.bulkPass || 21900;
     const totalAmountPaise = data.participantCount * unitPricePaise;
 
     const publicReference = generateReference(REFERENCE_PREFIXES.BULK);

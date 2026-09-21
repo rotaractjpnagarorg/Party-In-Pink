@@ -17,7 +17,7 @@ export const RegistrationOptionsSection: React.FC = () => {
   ];
 
   const bulkPerks = [
-    'Discounted rate of only ₹149 per attendee',
+    'Discounted rate of only ₹219 per attendee',
     'Convenient offline XLSX spreadsheet upload',
     'Club / Corporate banner recognition on social media',
     'Reserved group assembly desk on event morning',
@@ -117,7 +117,7 @@ export const RegistrationOptionsSection: React.FC = () => {
                   {formatINR(event.pricesPaise.bulkPass)}
                 </span>
                 <span className="text-slate-500 text-sm ml-2 font-medium">
-                  / attendee (₹50 discount)
+                  / attendee (₹20 savings)
                 </span>
               </div>
 
