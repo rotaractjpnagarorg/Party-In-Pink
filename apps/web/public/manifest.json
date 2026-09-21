@@ -1,0 +1,17 @@
+{
+  "name": "Party In Pink 5.0",
+  "short_name": "PiP 5.0",
+  "description": "Party In Pink 5.0 — Flagship Zumba fundraiser for breast cancer awareness by Rotaract Club of Bangalore JP Nagar",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#db2777",
+  "icons": [
+    {
+      "src": "/assets/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
