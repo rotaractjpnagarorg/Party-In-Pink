@@ -1,0 +1,53 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isActiveAdmin() {
+      return isAuthenticated()
+             && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+             && firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.active == true
+             && firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.role == request.auth.token.role;
+    }
+
+    function isSuperAdmin() {
+      return isActiveAdmin() && request.auth.token.role == 'SUPER_ADMIN';
+    }
+
+    function isPaymentApprover() {
+      return isActiveAdmin() && (
+        request.auth.token.role == 'PAYMENT_APPROVER' ||
+        request.auth.token.role == 'SUPER_ADMIN'
+      );
+    }
+
+    // Payment receipts: private and access controlled
+    match /receipts/{paymentId}/{fileId} {
+      // Direct read restricted to authorized approvers only
+      allow read: if isPaymentApprover();
+      // Public users may create a uniquely named receipt, but cannot overwrite or delete it.
+      allow write: if resource == null
+                   && request.resource != null
+                   && paymentId.size() >= 10
+                   && firestore.exists(/databases/(default)/documents/paymentSessions/$(paymentId))
+                   && firestore.get(/databases/(default)/documents/paymentSessions/$(paymentId)).data.status == 'AWAITING_PAYMENT'
+                   && fileId.matches('[A-Za-z0-9._-]+')
+                   && request.resource.size > 0
+                   && request.resource.size <= 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/(jpeg|png)');
+    }
+
+    // Temporary exports and files
+    match /temp/{allPaths=**} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // Default deny for all other storage paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

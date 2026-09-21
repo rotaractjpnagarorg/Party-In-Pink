@@ -1,0 +1,123 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isActiveAdmin() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == request.auth.token.role;
+    }
+
+    function hasRole(role) {
+      return isActiveAdmin() && request.auth.token.role == role;
+    }
+
+    function isAnyAdmin() {
+      return isActiveAdmin() && (
+        request.auth.token.role == 'SUPER_ADMIN' ||
+        request.auth.token.role == 'PAYMENT_APPROVER' ||
+        request.auth.token.role == 'REGISTRATION_ADMIN' ||
+        request.auth.token.role == 'TICKET_ADMIN' ||
+        request.auth.token.role == 'FINANCE_VIEW' ||
+        request.auth.token.role == 'VIEW_ONLY'
+      );
+    }
+
+    function isSuperAdmin() {
+      return hasRole('SUPER_ADMIN');
+    }
+
+    function isPaymentApprover() {
+      return hasRole('PAYMENT_APPROVER') || isSuperAdmin();
+    }
+
+    function isTicketAdmin() {
+      return hasRole('TICKET_ADMIN') || isSuperAdmin();
+    }
+
+    function isFinanceView() {
+      return hasRole('FINANCE_VIEW') || isSuperAdmin();
+    }
+
+    // 1. Events collection: Public read for event details, write only for Super Admin
+    match /events/{eventCode} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // 2. Orders collection: Privileged mutations through Cloud Functions only
+    match /orders/{orderId} {
+      allow read: if isAnyAdmin();
+      allow write: if false;
+
+      match /attendees/{attendeeId} {
+        allow read: if isAnyAdmin();
+        allow write: if false;
+      }
+    }
+
+    // 3. Payment Sessions: Read by Approver / Finance / Admin, direct write denied
+    match /paymentSessions/{paymentId} {
+      allow read: if isPaymentApprover() || isFinanceView() || hasRole('VIEW_ONLY');
+      allow write: if false;
+    }
+
+    // 4. Payment References (UTR Lock): Internal index, no direct write
+    match /paymentReferences/{reference} {
+      allow read: if isPaymentApprover();
+      allow write: if false;
+    }
+
+    // 5. Donations collection: Read by admin, direct write denied
+    match /donations/{donationId} {
+      allow read: if isAnyAdmin();
+      allow write: if false;
+    }
+
+    // 6. Payment Approvals: Read by approver/finance, direct write denied
+    match /paymentApprovals/{approvalId} {
+      allow read: if isPaymentApprover() || isFinanceView();
+      allow write: if false;
+    }
+
+    // 7. Background Jobs: Internal queues, read by specific admins
+    match /ticketJobs/{jobId} {
+      allow read: if isTicketAdmin() || hasRole('REGISTRATION_ADMIN');
+      allow write: if false;
+    }
+
+    match /emailJobs/{jobId} {
+      allow read: if isAnyAdmin();
+      allow write: if false;
+    }
+
+    // 8. Communications history
+    match /communications/{commId} {
+      allow read: if isAnyAdmin();
+      allow write: if false;
+    }
+
+    // 9. Immutable Audit Logs: Read by Super Admin & Finance, NEVER writable from client
+    match /auditLogs/{auditId} {
+      allow read: if isSuperAdmin() || isFinanceView();
+      allow write: if false;
+    }
+
+    // 10. Admins Profile Metadata
+    match /admins/{uid} {
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isSuperAdmin());
+      allow write: if isSuperAdmin();
+    }
+
+    // Default catch-all: Deny read and write
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

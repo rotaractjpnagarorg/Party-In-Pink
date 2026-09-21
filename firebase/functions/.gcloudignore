@@ -1,0 +1,10 @@
+.gcloudignore
+.git
+.gitignore
+node_modules/
+tests/
+*.spec.ts
+*.spec.js
+.secret.local
+!dist/
+!dist/**

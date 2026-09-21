@@ -1,0 +1,63 @@
+import { describe, it, expect } from 'vitest';
+import { renderEmail } from './emailTemplates.js';
+
+describe('Email Templates Engine', () => {
+  it('renders TICKET_ISSUED template with correct data and dress code notice', () => {
+    const rendered = renderEmail('TICKET_ISSUED', {
+      recipientName: 'Aarav Sharma',
+      reference: 'PIP5-S-TEST1234',
+      ticketCount: 2,
+      statusUrl: 'https://party-in-pink-5.netlify.app/status?token=token123',
+    });
+
+    expect(rendered.subject).toContain('PIP5-S-TEST1234');
+    expect(rendered.subject).toContain('Confirmed');
+    expect(rendered.html).toContain('Aarav Sharma');
+    expect(rendered.html).toContain('PIP5-S-TEST1234');
+    expect(rendered.html).toContain('pink clothing or accessories');
+    expect(rendered.text).toContain('Aarav Sharma');
+  });
+
+  it('renders PAYMENT_SUBMITTED template with reference and UTR', () => {
+    const rendered = renderEmail('PAYMENT_SUBMITTED', {
+      recipientName: 'Pooja Hegde',
+      reference: 'PIP5-S-POOJA1',
+      amountFormatted: '₹199',
+      utr: '428812345678',
+      statusUrl: 'https://party-in-pink-5.netlify.app/status?token=token456',
+    });
+
+    expect(rendered.subject).toContain('PIP5-S-POOJA1');
+    expect(rendered.html).toContain('428812345678');
+    expect(rendered.html).toContain('₹199');
+    expect(rendered.html).toContain('Verification in Progress');
+    expect(rendered.html).toContain('Under Verification');
+  });
+
+  it('renders DONATION_THANK_YOU template with 80G tax exemption info', () => {
+    const rendered = renderEmail('DONATION_THANK_YOU', {
+      recipientName: 'Suresh Kumar',
+      reference: 'PIP5-D-DON1234',
+      amountFormatted: '₹5,000',
+      pan: 'ABCDE1234F',
+    });
+
+    expect(rendered.subject).toContain('PIP5-D-DON1234');
+    expect(rendered.html).toContain('₹5,000');
+    expect(rendered.html).toContain('80G Notice:');
+    expect(rendered.html).toContain('ABCDE1234F');
+    expect(rendered.text).toContain('breast cancer care and surgeries');
+    expect(rendered.text).toContain('do not provide an 80G certificate');
+  });
+
+  it('escapes untrusted recipient content in HTML emails', () => {
+    const rendered = renderEmail('TICKET_ISSUED', {
+      recipientName: '<img src=x onerror=alert(1)>',
+      reference: 'PIP5-S-SAFE',
+      statusUrl: 'https://pip.rotaractjpnagar.org/status/token',
+    });
+
+    expect(rendered.html).not.toContain('<img src=x');
+    expect(rendered.html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+  });
+});
