@@ -73,6 +73,8 @@ export const createBulkOrder = onCall(
       currency: 'INR',
       paymentStatus: PaymentStatuses.AWAITING_PAYMENT,
       orderStatus: OrderStatuses.DRAFT,
+      reservationExpiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      capacityReleasedAt: null,
       createdAt: nowIso,
       updatedAt: nowIso,
     };

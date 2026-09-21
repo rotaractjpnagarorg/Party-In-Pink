@@ -12,6 +12,7 @@ import {
   Loader2,
   User,
   XCircle,
+  QrCode,
 } from 'lucide-react';
 import { useEvent } from '../context/EventContext.js';
 import {
@@ -21,6 +22,7 @@ import {
   bulkOrderCreateSchema,
   parseBulkRegistrationXlsx,
   generateBulkRegistrationTemplateBuffer,
+  getBulkMinParticipants,
   type BulkAttendeeRowInput,
 } from '@pip/shared';
 import { functions } from '../services/firebase.js';
@@ -34,7 +36,8 @@ export const BulkRegisterPage: React.FC = () => {
   const [step, setStep] = useState<1 | 2>(1);
 
   // Step 1: Organisation & Contact State
-  const [orgType, setOrgType] = useState<string>(AffiliationTypes.ROTARACT_CLUB);
+  const [orgType, setOrgType] = useState<string>(AffiliationTypes.ROTARACT_UNIVERSITY);
+  const minRequired = getBulkMinParticipants(orgType);
   const [orgName, setOrgName] = useState('');
   const [riDistrict, setRiDistrict] = useState('3191');
   const [contactName, setContactName] = useState('');
@@ -42,7 +45,21 @@ export const BulkRegisterPage: React.FC = () => {
   const [contactMobile, setContactMobile] = useState('');
   const [whatsappSame, setWhatsappSame] = useState(true);
   const [whatsappNumber, setWhatsappNumber] = useState('');
-  const [initialCount, setInitialCount] = useState<number>(5);
+  const [initialCount, setInitialCount] = useState<number>(15);
+
+  const handleOrgTypeChange = (newType: string) => {
+    setOrgType(newType);
+    const newMin = getBulkMinParticipants(newType);
+    if (initialCount < newMin) {
+      setInitialCount(newMin);
+    }
+  };
+
+  const handleCountChange = (value: number) => {
+    const minVal = getBulkMinParticipants(orgType);
+    const sanitized = isNaN(value) ? minVal : Math.max(minVal, Math.min(500, value));
+    setInitialCount(sanitized);
+  };
 
   // Order state after creation
   const [statusToken, setStatusToken] = useState<string | null>(null);
@@ -76,10 +93,17 @@ export const BulkRegisterPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Step 1 Submission: Create draft bulk order
-  const handleCreateDraftOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Step 1 Submission: Create draft bulk order and either navigate to pay or upload
+  const handleProceed = async (action: 'PAY' | 'UPLOAD') => {
     setGlobalError(null);
+
+    const minPasses = getBulkMinParticipants(orgType);
+    if (initialCount < minPasses) {
+      setGlobalError(
+        `Selected group type requires a minimum of ${minPasses} passes.`
+      );
+      return;
+    }
 
     const payload = {
       organisationType: orgType as any,
@@ -118,8 +142,14 @@ export const BulkRegisterPage: React.FC = () => {
 
       setStatusToken(response.data.statusToken);
       setPublicReference(response.data.orderReference);
-      setStep(2);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      if (action === 'PAY') {
+        // Direct redirect to payment page where UPI QR code for the exact amount is auto-generated
+        navigate(`/pay?token=${response.data.statusToken}`);
+      } else {
+        setStep(2);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } catch (err: unknown) {
       console.error('Create bulk order error:', err);
       const msg =
@@ -130,6 +160,11 @@ export const BulkRegisterPage: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCreateDraftOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleProceed('PAY');
   };
 
   // Step 2: Handle File Drop / Select
@@ -169,9 +204,10 @@ export const BulkRegisterPage: React.FC = () => {
       return;
     }
 
-    if (parsedAttendees.length < 5) {
+    const minPasses = getBulkMinParticipants(orgType);
+    if (parsedAttendees.length < minPasses) {
       setGlobalError(
-        'You must provide at least 5 valid participants to benefit from bulk pricing.'
+        `You must provide at least ${minPasses} valid participants for this group type.`
       );
       return;
     }
@@ -342,18 +378,29 @@ export const BulkRegisterPage: React.FC = () => {
                     <select
                       id="orgType"
                       value={orgType}
-                      onChange={(e) => setOrgType(e.target.value)}
+                      onChange={(e) => handleOrgTypeChange(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-pip-500 bg-white"
                     >
-                      <option value={AffiliationTypes.ROTARACT_CLUB}>Rotaract Club</option>
-                      <option value={AffiliationTypes.ROTARY_CLUB}>Rotary Club</option>
-                      <option value={AffiliationTypes.INTERACT_CLUB}>Interact Club</option>
-                      <option value={AffiliationTypes.COMPANY}>Company / Corporate Team</option>
+                      <option value={AffiliationTypes.ROTARACT_UNIVERSITY}>
+                        Rotaract Club - University Based (Min. 15 passes)
+                      </option>
+                      <option value={AffiliationTypes.ROTARACT_COMMUNITY}>
+                        Rotaract Club - Community Based (Min. 10 passes)
+                      </option>
+                      <option value={AffiliationTypes.ROTARY_CLUB}>
+                        Rotary Club (Min. 5 passes)
+                      </option>
+                      <option value={AffiliationTypes.INTERACT_CLUB}>
+                        Interact Club (Min. 5 passes)
+                      </option>
+                      <option value={AffiliationTypes.COMPANY}>
+                        Company / Corporate Team (Min. 5 passes)
+                      </option>
                       <option value={AffiliationTypes.NGO_ASSOCIATION}>
-                        NGO / Non-Profit Association
+                        NGO / Non-Profit Association (Min. 5 passes)
                       </option>
                       <option value={AffiliationTypes.OTHER_ORGANISATION}>
-                        College / Educational Institution
+                        College / Educational Institution (Min. 5 passes)
                       </option>
                     </select>
                   </div>
@@ -398,25 +445,40 @@ export const BulkRegisterPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label
-                      htmlFor="initialCount"
-                      className="block text-xs font-bold text-slate-700 mb-1"
-                    >
-                      Estimated Participant Count (Min. 5) *
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label
+                        htmlFor="initialCount"
+                        className="block text-xs font-bold text-slate-700"
+                      >
+                        Estimated Participant Count / Number of Passes (Min. {minRequired}) *
+                      </label>
+                      <span className="text-xs font-bold text-pip-600 bg-pip-50 px-2 py-0.5 rounded border border-pip-200 font-mono">
+                        ₹219 / pass
+                      </span>
+                    </div>
                     <input
                       id="initialCount"
                       type="number"
-                      min={5}
+                      min={minRequired}
                       max={500}
                       required
                       value={initialCount}
-                      onChange={(e) => setInitialCount(Math.max(5, parseInt(e.target.value) || 5))}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-pip-500"
+                      onChange={(e) => handleCountChange(parseInt(e.target.value, 10))}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-base font-bold focus:outline-none focus:ring-2 focus:ring-pip-500 font-mono"
                     />
-                    <p className="text-xs text-slate-400 mt-1">
-                      You will upload the exact list of participants in Step 2.
-                    </p>
+                    <div className="mt-2.5 p-3.5 bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 rounded-2xl flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-slate-700 font-semibold block">
+                          Automated Calculation: <strong className="font-mono">{initialCount}</strong> passes × ₹219
+                        </span>
+                        <span className="text-emerald-700 font-bold">
+                          Total Instant Savings: {formatINR(savingsPaise)}
+                        </span>
+                      </div>
+                      <span className="font-extrabold text-pip-700 text-lg font-mono">
+                        {formatINR(totalAmountPaise)}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -518,23 +580,37 @@ export const BulkRegisterPage: React.FC = () => {
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full flex items-center justify-center space-x-2 py-4 px-6 rounded-2xl bg-pip-600 hover:bg-pip-700 text-white font-bold text-base shadow-lg shadow-pip-600/30 transition disabled:opacity-50"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Creating Bulk Order...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Continue to Participant Upload</span>
-                      <ArrowRight className="w-5 h-5" />
-                    </>
-                  )}
-                </button>
+                <div className="space-y-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleProceed('PAY')}
+                    disabled={isSubmitting}
+                    className="w-full flex items-center justify-center space-x-2 py-4 px-6 rounded-2xl bg-pip-600 hover:bg-pip-700 text-white font-bold text-base shadow-lg shadow-pip-600/30 transition disabled:opacity-50"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Generating Payment Session & QR...</span>
+                      </>
+                    ) : (
+                      <>
+                        <QrCode className="w-5 h-5" />
+                        <span>Proceed to Payment ({formatINR(totalAmountPaise)})</span>
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleProceed('UPLOAD')}
+                    disabled={isSubmitting}
+                    className="w-full flex items-center justify-center space-x-2 py-3 px-6 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold text-sm transition disabled:opacity-50"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-slate-500" />
+                    <span>Continue to Participant Upload (Optional)</span>
+                  </button>
+                </div>
               </form>
             </div>
 
@@ -543,15 +619,41 @@ export const BulkRegisterPage: React.FC = () => {
               <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm sticky top-28 space-y-6">
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                    Bulk Group Discount
+                    Bulk Group Tier
                   </span>
                   <h3 className="text-xl font-extrabold text-slate-900 mt-2">Special Group Tier</h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    Party In Pink {event.edition} • 5+ Attendees
+                    Party In Pink {event.edition} • {formatINR(bulkPrice)}/pass
                   </p>
                 </div>
 
                 <div className="space-y-3 text-sm text-slate-600 border-t border-b border-slate-100 py-4">
+                  <div className="flex justify-between">
+                    <span>Selected Group Type</span>
+                    <span className="font-bold text-slate-900 text-right text-xs max-w-[180px]">
+                      {orgType === AffiliationTypes.ROTARACT_UNIVERSITY
+                        ? 'Rotaract (University Based)'
+                        : orgType === AffiliationTypes.ROTARACT_COMMUNITY
+                        ? 'Rotaract (Community Based)'
+                        : orgType === AffiliationTypes.ROTARY_CLUB
+                        ? 'Rotary Club'
+                        : orgType === AffiliationTypes.INTERACT_CLUB
+                        ? 'Interact Club'
+                        : orgType === AffiliationTypes.COMPANY
+                        ? 'Corporate Team'
+                        : orgType === AffiliationTypes.NGO_ASSOCIATION
+                        ? 'NGO / Association'
+                        : 'Educational Institution'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Minimum Passes</span>
+                    <span className="font-bold text-slate-900 font-mono">{minRequired} passes</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Passes Selected</span>
+                    <span className="font-bold text-pip-600 font-mono text-base">{initialCount} passes</span>
+                  </div>
                   <div className="flex justify-between">
                     <span>Discounted Pass</span>
                     <span className="font-bold text-slate-900">{formatINR(bulkPrice)} / pass</span>
@@ -565,8 +667,8 @@ export const BulkRegisterPage: React.FC = () => {
                     <span>Save {formatINR(singlePrice - bulkPrice)}</span>
                   </div>
                   <div className="pt-2 border-t border-dashed border-slate-200 flex justify-between text-base font-extrabold text-slate-900">
-                    <span>Estimated Total</span>
-                    <span className="font-mono text-pip-600 text-lg">
+                    <span>Total Amount</span>
+                    <span className="font-mono text-pip-600 text-xl font-extrabold">
                       {formatINR(totalAmountPaise)}
                     </span>
                   </div>
@@ -599,13 +701,22 @@ export const BulkRegisterPage: React.FC = () => {
                 </p>
               </div>
 
-              <button
-                onClick={handleDownloadTemplate}
-                className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition"
-              >
-                <Download className="w-4 h-4 text-slate-600" />
-                <span>Download XLSX Template</span>
-              </button>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => navigate(`/pay?token=${statusToken}`)}
+                  className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-pip-600 hover:bg-pip-700 text-white text-xs font-bold transition shadow-md shadow-pip-600/20"
+                >
+                  <QrCode className="w-4 h-4" />
+                  <span>Proceed to Payment ({formatINR(totalAmountPaise)})</span>
+                </button>
+                <button
+                  onClick={handleDownloadTemplate}
+                  className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition"
+                >
+                  <Download className="w-4 h-4 text-slate-600" />
+                  <span>Download XLSX Template</span>
+                </button>
+              </div>
             </div>
 
             {/* Upload Zone */}
@@ -615,11 +726,11 @@ export const BulkRegisterPage: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-900">
-                  Upload Completed Participant Spreadsheet
+                  Upload Completed Participant Spreadsheet (Optional)
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                  Upload your completed <code>.xlsx</code> file based on the template. Must contain
-                  at least 5 rows with Name, Email, and 10-digit Mobile.
+                  Upload your completed <code>.xlsx</code> file based on the template (minimum {minRequired} attendees).
+                  Or proceed to payment now and submit attendee details later.
                 </p>
               </div>
 
@@ -740,7 +851,7 @@ export const BulkRegisterPage: React.FC = () => {
                   <button
                     onClick={handleCommitAttendees}
                     disabled={
-                      isSubmitting || validationErrors.length > 0 || parsedAttendees.length < 5
+                      isSubmitting || validationErrors.length > 0 || parsedAttendees.length < minRequired
                     }
                     className="flex items-center space-x-2 px-8 py-4 rounded-xl bg-pip-600 hover:bg-pip-700 text-white font-bold text-base shadow-lg shadow-pip-600/30 transition disabled:opacity-50"
                   >

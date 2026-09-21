@@ -134,7 +134,7 @@ describe('Zod Validation Schemas', () => {
       expect(result.success).toBe(false);
     });
 
-    it('passes when participant count is 5 or more', () => {
+    it('passes when participant count is 5 or more for general organizations', () => {
       const bulkPayload = {
         organisationType: AffiliationTypes.COMPANY,
         organisationName: 'Tech Corp',
@@ -148,6 +148,46 @@ describe('Zod Validation Schemas', () => {
       };
       const result = bulkOrderCreateSchema.safeParse(bulkPayload);
       expect(result.success).toBe(true);
+    });
+
+    it('enforces minimum 15 passes for Rotaract University Based', () => {
+      const payload = {
+        organisationType: AffiliationTypes.ROTARACT_UNIVERSITY,
+        organisationName: 'Rotaract Club of SSMRV College',
+        riDistrict: '3191',
+        primaryContact: {
+          fullName: 'President Rahul',
+          email: 'president@rotaractssmrv.org',
+          mobileNumber: '9876543210',
+          whatsappSameAsMobile: true,
+        },
+        participantCount: 14, // below 15
+      };
+      const failResult = bulkOrderCreateSchema.safeParse(payload);
+      expect(failResult.success).toBe(false);
+
+      const passResult = bulkOrderCreateSchema.safeParse({ ...payload, participantCount: 15 });
+      expect(passResult.success).toBe(true);
+    });
+
+    it('enforces minimum 10 passes for Rotaract Community Based', () => {
+      const payload = {
+        organisationType: AffiliationTypes.ROTARACT_COMMUNITY,
+        organisationName: 'Rotaract Club of Bangalore South',
+        riDistrict: '3191',
+        primaryContact: {
+          fullName: 'President Priya',
+          email: 'president@racsouth.org',
+          mobileNumber: '9876543210',
+          whatsappSameAsMobile: true,
+        },
+        participantCount: 9, // below 10
+      };
+      const failResult = bulkOrderCreateSchema.safeParse(payload);
+      expect(failResult.success).toBe(false);
+
+      const passResult = bulkOrderCreateSchema.safeParse({ ...payload, participantCount: 10 });
+      expect(passResult.success).toBe(true);
     });
   });
 

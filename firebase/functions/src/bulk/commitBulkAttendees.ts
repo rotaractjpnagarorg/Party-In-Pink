@@ -8,6 +8,7 @@ import {
   PaymentStatuses,
   TicketStatuses,
   bulkAttendeeRowSchema,
+  getBulkMinParticipants,
   type Order,
   type Attendee,
 } from '@pip/shared';
@@ -72,6 +73,14 @@ export const commitBulkAttendees = onCall(
 
     const order = orderDoc.data() as Order;
 
+    const minRequired = getBulkMinParticipants(order.organisationType);
+    if (data.attendees.length < minRequired) {
+      throw new HttpsError(
+        'invalid-argument',
+        `Bulk registration for ${order.organisationName || 'this organisation'} requires a minimum of ${minRequired} attendees.`
+      );
+    }
+
     // Reject if payment already verified
     if (order.paymentStatus === PaymentStatuses.VERIFIED) {
       throw new HttpsError(
@@ -123,7 +132,7 @@ export const commitBulkAttendees = onCall(
     }
 
     const totalCount = validatedAttendees.length;
-    const unitPricePaise = order.unitPricePaise || 14900;
+    const unitPricePaise = order.unitPricePaise || 21900;
     const totalAmountPaise = totalCount * unitPricePaise;
     const orderRef = db.collection('orders').doc(order.id);
     const eventRef = db.collection('events').doc(DEFAULT_EVENT_CODE);

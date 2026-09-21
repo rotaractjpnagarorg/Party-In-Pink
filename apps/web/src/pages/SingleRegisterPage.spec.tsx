@@ -23,7 +23,7 @@ describe('SingleRegisterPage Component', () => {
     expect(screen.getByLabelText(/I am participating as/i)).toBeInTheDocument();
     expect(screen.getByText(/Pink Attire Notice/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Order Summary/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/₹199/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/₹239/i).length).toBeGreaterThan(0);
   });
 
   it('displays validation alert when submitting form with invalid data', async () => {

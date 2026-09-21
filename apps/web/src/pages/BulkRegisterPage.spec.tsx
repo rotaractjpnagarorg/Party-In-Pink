@@ -25,7 +25,16 @@ describe('BulkRegisterPage Component', () => {
     expect(
       screen.getByRole('button', { name: /Continue to Participant Upload/i })
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Proceed to Payment/i })
+    ).toBeInTheDocument();
     expect(screen.getAllByText(/Special Group Tier/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/₹149/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/₹219/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('option', { name: /Rotaract Club - University Based \(Min\. 15 passes\)/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: /Rotaract Club - Community Based \(Min\. 10 passes\)/i })
+    ).toBeInTheDocument();
   });
 });

@@ -26,7 +26,7 @@ describe('Phase 3: Single Registration & Security Invariants', () => {
   it('enforces server-authoritative single registration pricing (SEC-P0-002)', () => {
     // Client cannot submit a custom price; pricing is strictly dictated by event configuration
     const serverPricePaise = DEFAULT_PIP5_CONFIG.pricesPaise.singlePass;
-    expect(serverPricePaise).toBe(19900); // ₹199
+    expect(serverPricePaise).toBe(23900); // ₹239
     expect(Number.isInteger(serverPricePaise)).toBe(true);
   });
 

@@ -8,6 +8,7 @@ import {
   EventStatuses,
   AdminRoles,
   OrganisationRequiredAffiliations,
+  getBulkMinParticipants,
 } from '../constants/index.js';
 
 export const cleanPhoneNumber = (val: string): string => {
@@ -104,29 +105,46 @@ export const singleRegistrationSchema = z
 export type SingleRegistrationInput = z.infer<typeof singleRegistrationSchema>;
 
 // 2. Bulk Order Initialisation Schema
-export const bulkOrderCreateSchema = z.object({
-  organisationType: z.nativeEnum(AffiliationTypes, {
-    errorMap: () => ({ message: 'Please select an organisation type' }),
-  }),
-  organisationName: z
-    .string()
-    .trim()
-    .min(2, 'Organisation name must be at least 2 characters')
-    .max(100),
-  riDistrict: z.string().trim().max(20).optional().nullable(),
-  primaryContact: z.object({
-    fullName: z.string().trim().min(2).max(100),
-    email: z.string().trim().toLowerCase().email().max(100),
-    mobileNumber: indianPhoneSchema,
-    whatsappSameAsMobile: z.boolean().default(true),
-    whatsappNumber: optionalIndianPhoneSchema,
-  }),
-  participantCount: z
-    .number()
-    .int()
-    .min(5, 'Bulk registration requires at least 5 participants')
-    .max(500, 'Bulk registration cannot exceed 500 participants per order'),
-});
+export const bulkOrderCreateSchema = z
+  .object({
+    organisationType: z.nativeEnum(AffiliationTypes, {
+      errorMap: () => ({ message: 'Please select an organisation type' }),
+    }),
+    organisationName: z
+      .string()
+      .trim()
+      .min(2, 'Organisation name must be at least 2 characters')
+      .max(100),
+    riDistrict: z.string().trim().max(20).optional().nullable(),
+    primaryContact: z.object({
+      fullName: z.string().trim().min(2).max(100),
+      email: z.string().trim().toLowerCase().email().max(100),
+      mobileNumber: indianPhoneSchema,
+      whatsappSameAsMobile: z.boolean().default(true),
+      whatsappNumber: optionalIndianPhoneSchema,
+    }),
+    participantCount: z
+      .number()
+      .int()
+      .min(5, 'Bulk registration requires at least 5 participants')
+      .max(500, 'Bulk registration cannot exceed 500 participants per order'),
+  })
+  .superRefine((data, ctx) => {
+    const minRequired = getBulkMinParticipants(data.organisationType);
+    if (data.participantCount < minRequired) {
+      const typeLabel =
+        data.organisationType === AffiliationTypes.ROTARACT_UNIVERSITY
+          ? 'Rotaract Club - University Based'
+          : data.organisationType === AffiliationTypes.ROTARACT_COMMUNITY
+          ? 'Rotaract Club - Community Based'
+          : 'Group registration';
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['participantCount'],
+        message: `${typeLabel} requires a minimum of ${minRequired} passes.`,
+      });
+    }
+  });
 
 export type BulkOrderCreateInput = z.infer<typeof bulkOrderCreateSchema>;
 

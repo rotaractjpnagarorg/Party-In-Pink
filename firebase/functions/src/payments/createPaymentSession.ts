@@ -132,16 +132,7 @@ export const createPaymentSession = onCall(
           'This registration reservation has expired. Please start a new registration.'
         );
       }
-      if (
-        entityType === 'ORDER' &&
-        currentEntity.type === 'BULK' &&
-        currentEntity.attendeeCommitStatus !== 'COMMITTED'
-      ) {
-        throw new HttpsError(
-          'failed-precondition',
-          'Bulk attendees must finish committing before payment can begin.'
-        );
-      }
+
       const currentSessionId = currentEntity.paymentSessionId as string | undefined;
       if (currentSessionId) {
         const currentSessionRef = db.collection('paymentSessions').doc(currentSessionId);

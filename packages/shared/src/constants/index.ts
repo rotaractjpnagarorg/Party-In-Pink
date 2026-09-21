@@ -28,6 +28,8 @@ export type OrderType = (typeof OrderTypes)[keyof typeof OrderTypes];
 
 export const AffiliationTypes = {
   ROTARACT_CLUB: 'ROTARACT_CLUB',
+  ROTARACT_UNIVERSITY: 'ROTARACT_UNIVERSITY',
+  ROTARACT_COMMUNITY: 'ROTARACT_COMMUNITY',
   ROTARY_CLUB: 'ROTARY_CLUB',
   INTERACT_CLUB: 'INTERACT_CLUB',
   ROTARY_ALUMNI: 'ROTARY_ALUMNI',
@@ -40,10 +42,22 @@ export type AffiliationType = (typeof AffiliationTypes)[keyof typeof Affiliation
 
 export const RotaryFamilyAffiliations = [
   AffiliationTypes.ROTARACT_CLUB,
+  AffiliationTypes.ROTARACT_UNIVERSITY,
+  AffiliationTypes.ROTARACT_COMMUNITY,
   AffiliationTypes.ROTARY_CLUB,
   AffiliationTypes.INTERACT_CLUB,
   AffiliationTypes.ROTARY_ALUMNI,
 ] as const;
+
+export function getBulkMinParticipants(organisationType?: string | null): number {
+  if (organisationType === AffiliationTypes.ROTARACT_UNIVERSITY) {
+    return 15;
+  }
+  if (organisationType === AffiliationTypes.ROTARACT_COMMUNITY) {
+    return 10;
+  }
+  return 5;
+}
 
 export const OrganisationRequiredAffiliations = [
   AffiliationTypes.COMPANY,
