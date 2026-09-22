@@ -96,4 +96,17 @@ describe('Email Templates Engine', () => {
     });
     expect(donor.html).toContain('PASS #PIP5-DON-DON999-P01');
   });
+
+  it('formats QR payload with KonfHub checkin app spec when bookingId is present', () => {
+    const rendered = renderEmail('TICKET_ISSUED', {
+      recipientName: 'Checkin Attendee',
+      reference: 'PIP5-S-SCAN1',
+      bookingId: '7f43c912',
+      konfhubEventId: '9f4df047-f684-4ded-af0d-96e8f0459604',
+    });
+
+    const expectedPayload = 'id:7f43c912|n:Checkin Attendee|eid:9f4df047-f684-4ded-af0d-96e8f0459604';
+    expect(rendered.html).toContain(encodeURIComponent(expectedPayload));
+    expect(rendered.html).toContain('PASS #PIP5-REG-SCAN1');
+  });
 });

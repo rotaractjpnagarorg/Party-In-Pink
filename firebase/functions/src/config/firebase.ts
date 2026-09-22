@@ -9,4 +9,5 @@ if (getApps().length === 0) {
 }
 
 export const db = getFirestore();
+db.settings({ ignoreUndefinedProperties: true });
 export const storage = getStorage();

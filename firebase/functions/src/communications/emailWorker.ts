@@ -78,6 +78,7 @@ export async function processEmailJob(
 
     let registrationId: string | null = (job as any).registrationId || null;
     let ticketPdfUrl: string | null = (job as any).ticketPdfUrl || null;
+    let bookingId: string | null = (job as any).bookingId || null;
 
     if (job.entityType === 'ORDER') {
       const orderSnap = await db.collection('orders').doc(job.entityId).get();
@@ -91,7 +92,7 @@ export async function processEmailJob(
       if (order.statusToken) statusUrl = `${baseUrl}/status/${order.statusToken}`;
       if (!ticketPdfUrl && order.ticketPdfUrl) ticketPdfUrl = order.ticketPdfUrl;
 
-      if (!registrationId) {
+      if (!registrationId || !bookingId) {
         const attSnap = await db
           .collection('attendees')
           .where('orderId', '==', job.entityId)
@@ -100,7 +101,8 @@ export async function processEmailJob(
           .get();
         if (!attSnap.empty) {
           const att = attSnap.docs[0]?.data();
-          registrationId = att?.registrationId || att?.id || null;
+          if (!registrationId) registrationId = att?.registrationId || att?.id || null;
+          if (!bookingId) bookingId = att?.bookingId || null;
           if (!ticketPdfUrl && att?.ticketPdfUrl) ticketPdfUrl = att.ticketPdfUrl;
         } else {
           // fallback to first attendee
@@ -111,7 +113,8 @@ export async function processEmailJob(
             .get();
           if (!anyAttSnap.empty) {
             const att = anyAttSnap.docs[0]?.data();
-            registrationId = att?.registrationId || att?.id || null;
+            if (!registrationId) registrationId = att?.registrationId || att?.id || null;
+            if (!bookingId) bookingId = att?.bookingId || null;
             if (!ticketPdfUrl && att?.ticketPdfUrl) ticketPdfUrl = att.ticketPdfUrl;
           }
         }
@@ -151,6 +154,7 @@ export async function processEmailJob(
       pan,
       utr,
       registrationId,
+      bookingId,
       ticketPdfUrl,
     };
     const { subject, html, text } = renderEmail(job.templateKey, templateData);

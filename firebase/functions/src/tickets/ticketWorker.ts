@@ -26,30 +26,64 @@ async function ensureTicketEmailJobs(
   nowIso: string,
   result?: import('../integrations/konfhub/konfhubAdapter.js').IssuePassesResult
 ): Promise<void> {
-  const recipients =
-    order.type === 'SINGLE'
-      ? [
-          {
-            id: order.id,
-            name: order.buyer.fullName,
-            email: order.buyer.email,
-            audience: 'SINGLE_ATTENDEE',
-          },
-        ]
-      : [
-          {
-            id: 'organiser',
-            name: order.buyer.fullName,
-            email: order.buyer.email,
-            audience: 'BULK_ORGANISER',
-          },
-          ...attendees.map((attendee) => ({
-            id: attendee.id || attendee.email,
-            name: attendee.fullName,
-            email: attendee.email,
-            audience: 'BULK_ATTENDEE',
-          })),
-        ];
+  const isDonorOrder =
+    order.id.startsWith('DONOR_') ||
+    order.publicReference.includes('-TKT') ||
+    Boolean((order as any).donorId);
+
+  let recipients: Array<{
+    id: string;
+    name: string;
+    email: string;
+    audience: 'SINGLE_ATTENDEE' | 'BULK_ORGANISER' | 'BULK_ATTENDEE' | 'DONOR';
+  }>;
+
+  if (order.type === 'SINGLE') {
+    recipients = [
+      {
+        id: order.id,
+        name: order.buyer.fullName,
+        email: order.buyer.email,
+        audience: 'SINGLE_ATTENDEE',
+      },
+    ];
+  } else if (isDonorOrder) {
+    // For donor orders, each pass corresponds directly to an attendee/guest pass.
+    // Avoid creating a redundant 'organiser' duplicate email so N passes = exactly N emails.
+    recipients = attendees.map((attendee) => ({
+      id: attendee.id || attendee.email,
+      name: attendee.fullName,
+      email: attendee.email,
+      audience: 'BULK_ATTENDEE',
+    }));
+  } else {
+    // For bulk orders:
+    // If the organiser's email is not among the attendees, send them an organiser summary.
+    // If the organiser is already in attendees, they will receive their attendee pass email.
+    const buyerEmail = order.buyer.email.toLowerCase().trim();
+    const hasBuyerAttendee = attendees.some(
+      (att) => att.email.toLowerCase().trim() === buyerEmail
+    );
+
+    recipients = [
+      ...(!hasBuyerAttendee
+        ? [
+            {
+              id: 'organiser',
+              name: order.buyer.fullName,
+              email: order.buyer.email,
+              audience: 'BULK_ORGANISER' as const,
+            },
+          ]
+        : []),
+      ...attendees.map((attendee) => ({
+        id: attendee.id || attendee.email,
+        name: attendee.fullName,
+        email: attendee.email,
+        audience: 'BULK_ATTENDEE' as const,
+      })),
+    ];
+  }
 
   for (let start = 0; start < recipients.length; start += 200) {
     const chunk = recipients.slice(start, start + 200);
@@ -74,6 +108,7 @@ async function ensureTicketEmailJobs(
       if (registrationId && registrationId.startsWith('KH-EXISTING')) {
         registrationId = order.publicReference;
       }
+      const bookingId = detail?.bookingId || null;
 
       batch.set(snapshot.ref, {
         id: snapshot.id,
@@ -87,6 +122,7 @@ async function ensureTicketEmailJobs(
         status: 'QUEUED',
         attempts: 0,
         registrationId,
+        bookingId,
         ticketPdfUrl,
         createdAt: nowIso,
         updatedAt: nowIso,
@@ -308,6 +344,7 @@ export async function processTicketJob(
         batch.update(doc.ref, {
           ticketStatus: TicketStatuses.ISSUED,
           ...(detail?.registrationId ? { registrationId: detail.registrationId } : {}),
+          ...(detail?.bookingId ? { bookingId: detail.bookingId } : {}),
           ...(detail?.ticketPdfUrl ? { ticketPdfUrl: detail.ticketPdfUrl } : {}),
           updatedAt: nowIso,
         });

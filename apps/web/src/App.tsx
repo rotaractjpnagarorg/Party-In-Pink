@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { EventProvider } from './context/EventContext.js';
 import { AdminAuthProvider } from './context/AdminAuthContext.js';
 import { Header } from './components/layout/Header.js';
@@ -18,6 +18,7 @@ import { PaymentPage } from './pages/PaymentPage.js';
 import { DonatePage } from './pages/DonatePage.js';
 import { SponsorshipPage } from './pages/SponsorshipPage.js';
 import { NotFoundPage } from './pages/NotFoundPage.js';
+import { ErrorBoundary } from './components/common/ErrorBoundary.js';
 
 // Code-split heavy bulk registration & admin routes per Document 03
 const BulkRegisterPage = lazy(() =>
@@ -61,69 +62,70 @@ const PageLoader: React.FC = () => (
   </div>
 );
 
+const PublicLayout: React.FC = () => (
+  <div className="min-h-screen flex flex-col justify-between bg-slate-50 text-slate-900 font-sans antialiased selection:bg-pip-500 selection:text-white">
+    <Header />
+    <main className="flex-grow">
+      <Outlet />
+    </main>
+    <Footer />
+  </div>
+);
+
 export const App: React.FC = () => {
   return (
-    <EventProvider>
-      <AdminAuthProvider>
-        <BrowserRouter>
-          <ScrollToTopOnNav />
-          <ScrollToTopButton />
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              {/* Public routes with Header/Footer */}
-              <Route
-                path="/*"
-                element={
-                  <div className="min-h-screen flex flex-col justify-between bg-slate-50 text-slate-900 font-sans antialiased selection:bg-pip-500 selection:text-white">
-                    <Header />
-                    <main className="flex-grow">
-                      <Routes>
-                        <Route path="/" element={<LandingPage />} />
-                        <Route path="/about" element={<AboutPage />} />
-                        <Route path="/gallery" element={<GalleryPage />} />
-                        <Route path="/details" element={<DetailsPage />} />
-                        <Route path="/terms" element={<TermsPage />} />
-                        <Route path="/privacy" element={<PrivacyPage />} />
-                        <Route path="/refunds" element={<RefundsPage />} />
-                        <Route path="/contact" element={<ContactPage />} />
+    <ErrorBoundary>
+      <EventProvider>
+        <AdminAuthProvider>
+          <BrowserRouter>
+            <ScrollToTopOnNav />
+            <ScrollToTopButton />
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* Public routes with permanent Header/Footer shell via Outlet */}
+                <Route element={<PublicLayout />}>
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/about" element={<AboutPage />} />
+                  <Route path="/gallery" element={<GalleryPage />} />
+                  <Route path="/details" element={<DetailsPage />} />
+                  <Route path="/terms" element={<TermsPage />} />
+                  <Route path="/privacy" element={<PrivacyPage />} />
+                  <Route path="/refunds" element={<RefundsPage />} />
+                  <Route path="/contact" element={<ContactPage />} />
 
-                        {/* Registration & Status Routes */}
-                        <Route path="/register" element={<SingleRegisterPage />} />
-                        <Route path="/bulk" element={<BulkRegisterPage />} />
-                        <Route path="/status" element={<StatusPage />} />
-                        <Route path="/status/:token" element={<StatusPage />} />
+                  {/* Registration & Status Routes */}
+                  <Route path="/register" element={<SingleRegisterPage />} />
+                  <Route path="/bulk" element={<BulkRegisterPage />} />
+                  <Route path="/status" element={<StatusPage />} />
+                  <Route path="/status/:token" element={<StatusPage />} />
 
-                        {/* Payment & Donation Routes */}
-                        <Route path="/pay" element={<PaymentPage />} />
-                        <Route path="/donate" element={<DonatePage />} />
-                        <Route path="/sponsor" element={<SponsorshipPage />} />
+                  {/* Payment & Donation Routes */}
+                  <Route path="/pay" element={<PaymentPage />} />
+                  <Route path="/donate" element={<DonatePage />} />
+                  <Route path="/sponsor" element={<SponsorshipPage />} />
 
-                        <Route path="*" element={<NotFoundPage />} />
-                      </Routes>
-                    </main>
-                    <Footer />
-                  </div>
-                }
-              />
+                  <Route path="*" element={<NotFoundPage />} />
+                </Route>
 
-              {/* Admin Login — standalone without Header/Footer */}
-              <Route path="/admin/login" element={<AdminLoginPage />} />
+                {/* Admin Login — standalone without Header/Footer */}
+                <Route path="/admin/login" element={<AdminLoginPage />} />
 
-              {/* Admin Console — dark theme with sidebar, no Header/Footer */}
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboardPage />} />
-                <Route path="orders" element={<AdminOrdersPage />} />
-                <Route path="payments" element={<AdminPaymentsPage />} />
-                <Route path="donations" element={<AdminDonationsPage />} />
-                <Route path="tickets" element={<AdminTicketsPage />} />
-                <Route path="communications" element={<AdminCommunicationsPage />} />
-                <Route path="reports" element={<AdminReportsPage />} />
-              </Route>
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </AdminAuthProvider>
-    </EventProvider>
+                {/* Admin Console — dark theme with sidebar, no Header/Footer */}
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminDashboardPage />} />
+                  <Route path="orders" element={<AdminOrdersPage />} />
+                  <Route path="payments" element={<AdminPaymentsPage />} />
+                  <Route path="donations" element={<AdminDonationsPage />} />
+                  <Route path="tickets" element={<AdminTicketsPage />} />
+                  <Route path="communications" element={<AdminCommunicationsPage />} />
+                  <Route path="reports" element={<AdminReportsPage />} />
+                </Route>
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </AdminAuthProvider>
+      </EventProvider>
+    </ErrorBoundary>
   );
 };
 

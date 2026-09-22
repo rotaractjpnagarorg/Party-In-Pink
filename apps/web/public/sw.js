@@ -1,9 +1,13 @@
-const CACHE_NAME = 'pip5-cache-v1';
+const CACHE_NAME = 'pip5-cache-v2';
 const PRECACHE_URLS = ['/', '/index.html', '/assets/favicon.svg'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));
-  self.skipWaiting();
+  event.waitUntil(
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -15,8 +19,8 @@ self.addEventListener('activate', (event) => {
           cacheNames.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name))
         )
       )
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
@@ -27,7 +31,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Never cache Firebase APIs, Firestore, or Cloud Functions
+  // Never intercept or cache Firebase APIs, Firestore, Cloud Functions, or non-GET requests
   if (
     url.hostname.includes('firebaseio.com') ||
     url.hostname.includes('googleapis.com') ||
@@ -38,40 +42,42 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Handle SPA Navigation requests: Network-first, fall back to /index.html
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(async () => {
+        const cached = await caches.match('/index.html');
+        return cached || Response.error();
+      })
+    );
+    return;
+  }
+
   // Stale-while-revalidate for static assets
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, networkResponse);
+      const fetchPromise = fetch(event.request)
+        .then((networkResponse) => {
+          if (
+            networkResponse &&
+            networkResponse.status === 200 &&
+            (networkResponse.type === 'basic' || networkResponse.type === 'cors')
+          ) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache).catch(() => {
+                // Ignore caching errors for browser extensions or quota
               });
-            }
-          })
-          .catch(() => {
-            // Network failure: cached response is already serving
-          });
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then((networkResponse) => {
-        if (
-          !networkResponse ||
-          networkResponse.status !== 200 ||
-          networkResponse.type !== 'basic'
-        ) {
+            });
+          }
           return networkResponse;
-        }
-
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
+        })
+        .catch(() => {
+          // If offline and no cached response, return empty response
+          return cachedResponse || Response.error();
         });
 
-        return networkResponse;
-      });
+      return cachedResponse || fetchPromise;
     })
   );
 });

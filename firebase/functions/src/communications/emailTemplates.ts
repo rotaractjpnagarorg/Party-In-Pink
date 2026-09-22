@@ -8,6 +8,8 @@ export interface EmailTemplateData {
   utr?: string | null;
   registrationId?: string | null;
   ticketPdfUrl?: string | null;
+  bookingId?: string | null;
+  konfhubEventId?: string | null;
 }
 
 function escapeHtml(value: string | number | null | undefined): string {
@@ -90,7 +92,11 @@ export function renderEmail(
     cleanPassId = cleanPassId.replace(/-TKT(?=-|$)/i, '');
 
     const safePassId = escapeHtml(cleanPassId);
-    const qrData = encodeURIComponent(cleanPassId);
+    const eventId = data.konfhubEventId || '9f4df047-f684-4ded-af0d-96e8f0459604';
+    const qrPayload = data.bookingId
+      ? `id:${data.bookingId}|n:${data.recipientName}|eid:${eventId}`
+      : cleanPassId;
+    const qrData = encodeURIComponent(qrPayload);
     const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${qrData}`;
 
     const html = baseLayout(

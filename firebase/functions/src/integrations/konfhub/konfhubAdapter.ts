@@ -39,8 +39,8 @@ export interface IssuePassesResult {
     attendeeId?: string;
     email: string;
     registrationId?: string;
-    bookingId?: string;
-    ticketPdfUrl?: string;
+    bookingId?: string | null;
+    ticketPdfUrl?: string | null;
   }>;
   errors: Array<{
     chunkIndex: number;
@@ -264,8 +264,8 @@ export async function issueKonfHubPasses(input: IssuePassesInput): Promise<Issue
             attendeeId: att.id,
             email: att.email,
             registrationId: regId,
-            bookingId: bookingId || undefined,
-            ticketPdfUrl: ticketPdfUrl || undefined,
+            bookingId: bookingId || null,
+            ticketPdfUrl: ticketPdfUrl || null,
           };
           ticketDetails.push(detail);
           chunkDetails.push(detail);
@@ -290,6 +290,8 @@ export async function issueKonfHubPasses(input: IssuePassesInput): Promise<Issue
             attendeeId: att.id,
             email: att.email,
             registrationId: regId,
+            bookingId: null,
+            ticketPdfUrl: null,
           };
           ticketDetails.push(detail);
           chunkDetails.push(detail);
