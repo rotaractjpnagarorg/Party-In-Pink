@@ -7,6 +7,7 @@ import {
   REFERENCE_PREFIXES,
   PaymentStatuses,
   DonationStatuses,
+  getDonationComplimentaryPasses,
   type Donation,
 } from '@pip/shared';
 
@@ -32,8 +33,8 @@ const donationInputSchema = z.object({
 });
 
 /**
- * Creates a donation intent for cancer awareness and mammograms.
- * Authoritative invariant: Donations never create tickets.
+ * Creates a donation intent for cancer awareness and patient care.
+ * Automatically allocates complimentary passes based on official sponsorship/donation tier.
  */
 export const createDonation = onCall(
   {
@@ -55,6 +56,7 @@ export const createDonation = onCall(
     const nowIso = new Date().toISOString();
     const publicReference = generateReference(REFERENCE_PREFIXES.DONATION);
     const statusToken = generateStatusToken();
+    const complimentaryPassesCount = getDonationComplimentaryPasses(data.amountPaise);
 
     const donationRef = db.collection('donations').doc();
     const eventRef = db.collection('events').doc(DEFAULT_EVENT_CODE);
@@ -76,6 +78,7 @@ export const createDonation = onCall(
       currency: 'INR',
       pan: data.pan?.trim().toUpperCase() || null,
       isAnonymousPublicly: data.isAnonymousPublicly,
+      complimentaryPassesCount,
       paymentStatus: PaymentStatuses.AWAITING_PAYMENT,
       donationStatus: DonationStatuses.CREATED,
       createdAt: nowIso,
@@ -114,6 +117,7 @@ export const createDonation = onCall(
         details: {
           publicReference,
           amountPaise: data.amountPaise,
+          complimentaryPassesCount,
           isAnonymous: data.isAnonymousPublicly,
         },
       });
@@ -125,6 +129,7 @@ export const createDonation = onCall(
       donationReference: publicReference,
       statusToken,
       amountPaise: data.amountPaise,
+      complimentaryPassesCount,
       currency: 'INR',
       nextAction: 'PAYMENT',
     };

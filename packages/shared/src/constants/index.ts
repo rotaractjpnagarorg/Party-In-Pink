@@ -70,6 +70,65 @@ export function getBulkPassPricePaise(organisationType?: string | null): number 
   return 21900; // ₹219 for Rotaract, Interact, College, NGO, etc.
 }
 
+export const DONATION_TIERS = [
+  {
+    tier: 'WELLWISHER',
+    name: 'Wellwisher',
+    amount: 5000,
+    amountPaise: 500000,
+    complimentaryPasses: 0,
+    benefits: ['Major Wellwisher Acknowledgement', 'Direct support for patient cancer care'],
+  },
+  {
+    tier: 'SILVER',
+    name: 'Silver',
+    amount: 10000,
+    amountPaise: 1000000,
+    complimentaryPasses: 2,
+    benefits: [
+      '2 Complimentary Event Passes',
+      'Logo on event backdrop & social media',
+      'Recognition and MC shout-out',
+      'Pamphlet/deliverables distribution',
+    ],
+  },
+  {
+    tier: 'GOLD',
+    name: 'Gold',
+    amount: 15000,
+    amountPaise: 1500000,
+    complimentaryPasses: 5,
+    benefits: [
+      '5 Complimentary Event Passes',
+      '3 minutes stage time',
+      'Logo on event backdrop & social media',
+      'Recognition and MC shout-out',
+      'Pamphlet/deliverables distribution',
+    ],
+  },
+  {
+    tier: 'PLATINUM',
+    name: 'Platinum',
+    amount: 20000,
+    amountPaise: 2000000,
+    complimentaryPasses: 7,
+    benefits: [
+      '7 Complimentary Event Passes',
+      '5 minutes stage time',
+      'Logo on event backdrop & social media',
+      'Recognition and MC shout-out',
+      'Pamphlet/deliverables distribution',
+    ],
+  },
+] as const;
+
+export function getDonationComplimentaryPasses(amountPaise: number): number {
+  if (amountPaise >= 2000000) return 7;
+  if (amountPaise >= 1500000) return 5;
+  if (amountPaise >= 1000000) return 2;
+  return 0;
+}
+
 export const OrganisationRequiredAffiliations = [
   AffiliationTypes.COMPANY,
   AffiliationTypes.NGO_ASSOCIATION,

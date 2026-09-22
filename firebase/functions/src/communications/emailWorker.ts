@@ -124,6 +124,7 @@ export async function processEmailJob(
       if (donation.amountPaise) {
         amountFormatted = `₹${(donation.amountPaise / 100).toLocaleString('en-IN')}`;
       }
+      ticketCount = donation.complimentaryPassesCount || 0;
       pan = donation.pan || null;
       if (donation.statusToken) statusUrl = `${baseUrl}/status/${donation.statusToken}`;
     }

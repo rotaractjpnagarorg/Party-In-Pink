@@ -23,19 +23,21 @@ const renderWithProviders = (ui: React.ReactElement) => {
 };
 
 describe('DonatePage Component', () => {
-  it('renders donation preset amounts, donor form, and 80G notice', () => {
+  it('renders donation preset amounts, donor form, and complimentary passes notice', () => {
     renderWithProviders(<DonatePage />);
 
     expect(screen.getByText(/Select Donation Amount/i)).toBeInTheDocument();
-    expect(screen.getByText(/Patient Care Support/i)).toBeInTheDocument();
-    expect(screen.getByText(/Champion of Hope/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Platinum/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Gold/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Silver/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Wellwisher/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByLabelText(/Full Name \*/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Email Address \*/i)).toBeInTheDocument();
     expect(screen.getByText(/80G Certificate Notice/i)).toBeInTheDocument();
     expect(
       screen.getByText(/Need an 80G certificate\? Do not pay these accounts/i)
     ).toBeInTheDocument();
-    expect(screen.getByText(/Event Entry Notice/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Complimentary Passes Included/i)[0]).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Proceed to Donate/i })).toBeInTheDocument();
   });
 });

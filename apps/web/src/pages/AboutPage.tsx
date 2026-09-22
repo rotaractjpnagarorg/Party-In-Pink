@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Globe, BookOpen, ShieldCheck, Mail, ArrowRight, Sparkles } from 'lucide-react';
+import { Users, Globe, BookOpen, ShieldCheck, Mail, ArrowRight, Sparkles, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const AboutPage: React.FC = () => {
@@ -183,6 +183,107 @@ export const AboutPage: React.FC = () => {
             >
               Support the Cause
             </Link>
+          </div>
+        </div>
+
+        {/* Section 5: Organizing Leadership & Committee */}
+        <div className="bg-white rounded-3xl p-8 sm:p-10 border border-slate-200/80 shadow-sm mb-12 space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-100">
+            <div>
+              <div className="inline-flex items-center space-x-2 text-pip-600 text-xs font-bold uppercase tracking-wider mb-1">
+                <Users className="w-4 h-4" />
+                <span>Leadership & Organizing Committee</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+                The Team Behind Party In Pink 5.0
+              </h2>
+            </div>
+            <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+              Dedicated Rotaractors steering project management, community partnerships, and clinical beneficiary alignment.
+            </p>
+          </div>
+
+          {/* Project Leadership */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+              Project Chairs & Co-Chairs
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-pip-50 to-pink-50 border border-pip-200 shadow-xs space-y-2">
+                <div className="w-10 h-10 rounded-xl bg-pip-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                  MC
+                </div>
+                <div>
+                  <div className="font-extrabold text-slate-900 text-base">Rtr. Manish S Chikmath</div>
+                  <div className="text-xs font-bold text-pip-700">Project Chair</div>
+                </div>
+                <p className="text-xs text-slate-500 pt-1">Overall project direction, operational leadership & beneficiary coordination.</p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 shadow-xs space-y-2">
+                <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center font-bold text-sm">
+                  KM
+                </div>
+                <div>
+                  <div className="font-extrabold text-slate-900 text-base">Rtr. Karthik M S</div>
+                  <div className="text-xs font-bold text-slate-600">Project Co-Chair</div>
+                </div>
+                <p className="text-xs text-slate-500 pt-1">Logistics, venue management, sound & participant experience.</p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 shadow-xs space-y-2">
+                <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center font-bold text-sm">
+                  DM
+                </div>
+                <div>
+                  <div className="font-extrabold text-slate-900 text-base">Rtr. Drishti Mishra</div>
+                  <div className="text-xs font-bold text-slate-600">Project Co-Chair</div>
+                </div>
+                <p className="text-xs text-slate-500 pt-1">Public relations, marketing, sponsor outreach & registrations.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Club Executive Leadership */}
+          <div className="space-y-4 pt-4 border-t border-slate-100">
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+              Rotaract Club of Bangalore JP Nagar — Executive Leadership (2026–27)
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <div className="font-bold text-slate-900 text-sm">Rtr. Anarghya Suvin</div>
+                <div className="text-xs font-semibold text-pip-700">President (2026–27)</div>
+                <div className="pt-2">
+                  <a
+                    href="https://wa.me/918618066508"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center text-[11px] font-bold text-slate-600 hover:text-pip-700"
+                  >
+                    <Phone className="w-3 h-3 mr-1 text-pip-600" />
+                    +91 86180 66508
+                  </a>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <div className="font-bold text-slate-900 text-sm">Rtr. Adithya N</div>
+                <div className="text-xs font-semibold text-slate-600">Secretary (2026–27)</div>
+                <p className="text-[11px] text-slate-400 pt-1">Secretarial administration & governance</p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <div className="font-bold text-slate-900 text-sm">Rtr. Vignesh V</div>
+                <div className="text-xs font-semibold text-slate-600">Director, Community Service</div>
+                <p className="text-[11px] text-slate-400 pt-1">Community outreach & service initiatives</p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <div className="font-bold text-slate-900 text-sm">Rtr. Sumukha</div>
+                <div className="text-xs font-semibold text-slate-600">Director, Community Service</div>
+                <p className="text-[11px] text-slate-400 pt-1">Community outreach & service initiatives</p>
+              </div>
+            </div>
           </div>
         </div>
 

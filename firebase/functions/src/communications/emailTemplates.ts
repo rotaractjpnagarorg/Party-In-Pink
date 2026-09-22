@@ -170,6 +170,7 @@ export function renderEmail(
 
   if (templateKey === 'DONATION_THANK_YOU') {
     const subject = `💖 Thank You for Supporting Breast Cancer Care — Party In Pink 5.0 (${data.reference})`;
+    const hasPasses = Boolean(data.ticketCount && data.ticketCount > 0);
     const html = baseLayout(
       subject,
       `
@@ -181,15 +182,29 @@ export function renderEmail(
       <div class="details-box">
         <strong>Donation Reference:</strong> ${safe.reference}<br>
         <strong>Contributed Amount:</strong> ${safe.amountFormatted || 'N/A'}<br>
+        ${hasPasses ? `<strong>Complimentary Passes:</strong> ${safe.ticketCount} Passes Included<br>` : ''}
         ${data.pan ? `<strong>PAN Number:</strong> ${safe.pan}<br>` : ''}
         <strong>80G Notice:</strong> The event payment accounts do not provide an 80G certificate
       </div>
+
+      ${
+        hasPasses
+          ? `
+      <div style="background: #fdf2f8; border-left: 4px solid #db2777; padding: 14px 16px; border-radius: 8px; margin: 16px 0;">
+        <strong style="color: #db2777; font-size: 14px;">🎟️ Your Complimentary Passes:</strong>
+        <p style="margin: 6px 0 0 0; font-size: 13px; color: #831843; line-height: 1.5;">
+          As part of your sponsorship tier, <strong>${safe.ticketCount} complimentary passes</strong> have been allocated to you! Your official entry passes and QR codes are being issued to your email.
+        </p>
+      </div>
+      `
+          : ''
+      }
 
       <p>If you require an 80G certificate, contact the organizing team before making a donation so they can guide you through the appropriate eligible process.</p>
       <p>With warm regards,<br><strong>Rotaract Club of Bangalore JP Nagar & Rotary Bangalore South</strong></p>
       `
     );
-    const text = `Dear ${data.recipientName},\n\nThank you for your generous contribution of ${data.amountFormatted} to Party In Pink 5.0 (Ref: ${data.reference}). Your contribution supports breast cancer care and surgeries through Sri Shankara Cancer Foundation.\n\nThe event payment accounts do not provide an 80G certificate. Contact the organizing team before donating if you require an eligible receipt.\n\nRotaract Club of Bangalore JP Nagar`;
+    const text = `Dear ${data.recipientName},\n\nThank you for your generous contribution of ${data.amountFormatted} to Party In Pink 5.0 (Ref: ${data.reference}). Your contribution supports breast cancer care and surgeries through Sri Shankara Cancer Foundation.\n\n${hasPasses ? `Complimentary Passes: ${data.ticketCount} Passes Included (Official tickets with QR codes sent in a separate email).\n\n` : ''}The event payment accounts do not provide an 80G certificate. Contact the organizing team before donating if you require an eligible receipt.\n\nRotaract Club of Bangalore JP Nagar`;
     return { subject, html, text };
   }
 

@@ -116,6 +116,15 @@ export const SponsorshipPage: React.FC = () => {
                     </li>
                   ))}
                 </ul>
+                <div className="mt-6 pt-4 border-t border-slate-200/60">
+                  <Link
+                    to="/donate"
+                    className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl font-bold text-xs bg-slate-900 hover:bg-slate-800 text-white transition-all shadow-xs"
+                  >
+                    <span>Contribute via PiP Pay</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
               </article>
             ))}
           </div>
@@ -124,18 +133,26 @@ export const SponsorshipPage: React.FC = () => {
             <div>
               <p className="font-extrabold text-slate-900">Wellwisher — ₹5,000</p>
               <p className="mt-1 text-sm text-slate-600">
-                The sponsorship deck lists this contribution tier separately. Contact the team for
-                its recognition details and available deliverables.
+                Contact the team for its recognition details and available deliverables. Support
+                breast cancer care directly with official wellwisher acknowledgement.
               </p>
             </div>
-            <a
-              href="https://wa.me/918618066508?text=Hi%2C%20I%20would%20like%20to%20know%20about%20the%20Party%20In%20Pink%20Wellwisher%20package."
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-flex shrink-0 items-center gap-2 rounded-xl bg-pip-600 px-5 py-3 text-sm font-bold text-white hover:bg-pip-700 sm:mt-0"
-            >
-              Ask about Wellwisher <ArrowRight className="h-4 w-4" />
-            </a>
+            <div className="mt-4 flex items-center gap-2.5 sm:mt-0">
+              <Link
+                to="/donate"
+                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-pip-600 px-5 py-3 text-sm font-bold text-white hover:bg-pip-700"
+              >
+                Contribute ₹5,000 <ArrowRight className="h-4 w-4" />
+              </Link>
+              <a
+                href="https://wa.me/918618066508?text=Hi%2C%20I%20would%20like%20to%20know%20about%20the%20Party%20In%20Pink%20Wellwisher%20package."
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-100"
+              >
+                Inquire <ArrowRight className="h-4 w-4" />
+              </a>
+            </div>
           </div>
         </section>
 

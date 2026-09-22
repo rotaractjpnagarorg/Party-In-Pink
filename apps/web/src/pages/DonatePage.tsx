@@ -1,24 +1,64 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Heart, ShieldCheck, Building, AlertCircle, ArrowRight, Loader2, Info } from 'lucide-react';
+import {
+  Heart,
+  ShieldCheck,
+  Building,
+  AlertCircle,
+  ArrowRight,
+  Loader2,
+  Gift,
+  Sparkles,
+} from 'lucide-react';
 import { useEvent } from '../context/EventContext.js';
-import { formatINR } from '@pip/shared';
+import { formatINR, getDonationComplimentaryPasses } from '@pip/shared';
 import { functions } from '../services/firebase.js';
 import { httpsCallable } from 'firebase/functions';
 
 const PRESET_AMOUNTS = [
-  { amount: 500, label: 'Supporter Contribution' },
-  { amount: 1000, label: 'Patient Care Support' },
-  { amount: 2500, label: 'Treatment Aid' },
-  { amount: 5000, label: 'Champion of Hope' },
-  { amount: 10000, label: 'Community Patron' },
+  {
+    amount: 20000,
+    tier: 'Platinum',
+    label: '7 Complimentary Passes • 5 Min Stage Time • MC Shoutout',
+    passes: 7,
+  },
+  {
+    amount: 15000,
+    tier: 'Gold',
+    label: '5 Complimentary Passes • 3 Min Stage Time • MC Shoutout',
+    passes: 5,
+  },
+  {
+    amount: 10000,
+    tier: 'Silver',
+    label: '2 Complimentary Passes • Banner & Logo • MC Shoutout',
+    passes: 2,
+  },
+  {
+    amount: 5000,
+    tier: 'Wellwisher',
+    label: 'Wellwisher Certificate & Recognition',
+    passes: 0,
+  },
+  {
+    amount: 2500,
+    tier: 'Aid Partner',
+    label: 'Patient Treatment & Hospital Aid',
+    passes: 0,
+  },
+  {
+    amount: 1000,
+    tier: 'Care Donor',
+    label: 'Cancer Screening & Mammogram Support',
+    passes: 0,
+  },
 ];
 
 export const DonatePage: React.FC = () => {
   const { event } = useEvent();
   const navigate = useNavigate();
 
-  const [selectedAmount, setSelectedAmount] = useState<number>(1000);
+  const [selectedAmount, setSelectedAmount] = useState<number>(10000);
   const [customAmount, setCustomAmount] = useState<string>('');
   const [isCustom, setIsCustom] = useState<boolean>(false);
 
@@ -39,6 +79,8 @@ export const DonatePage: React.FC = () => {
   const effectiveAmountPaise = isCustom
     ? Math.round(parseFloat(customAmount || '0') * 100)
     : selectedAmount * 100;
+
+  const complimentaryPasses = getDonationComplimentaryPasses(effectiveAmountPaise);
 
   const handleSelectPreset = (amt: number) => {
     setSelectedAmount(amt);
@@ -174,16 +216,26 @@ export const DonatePage: React.FC = () => {
                         key={preset.amount}
                         type="button"
                         onClick={() => handleSelectPreset(preset.amount)}
-                        className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between ${
+                        className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between relative ${
                           isSelected
-                            ? 'border-pip-600 bg-pip-50 ring-2 ring-pip-500/20 shadow-sm'
+                            ? 'border-pip-600 bg-pip-50/70 ring-2 ring-pip-500/20 shadow-sm'
                             : 'border-slate-200 hover:border-slate-300 bg-white'
                         }`}
                       >
-                        <div className="font-mono text-xl font-extrabold text-slate-900">
-                          ₹{preset.amount}
+                        {preset.passes > 0 && (
+                          <span className="absolute top-2.5 right-2.5 text-[10px] font-extrabold bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full border border-pink-200 shadow-xs">
+                            {preset.passes} Passes
+                          </span>
+                        )}
+                        <div>
+                          <div className="font-mono text-xl font-extrabold text-slate-900">
+                            ₹{preset.amount.toLocaleString('en-IN')}
+                          </div>
+                          <div className="text-xs font-bold text-pip-700 mt-0.5">
+                            {preset.tier}
+                          </div>
                         </div>
-                        <div className="text-[11px] font-semibold text-slate-500 mt-1">
+                        <div className="text-[11px] font-medium text-slate-500 mt-2 line-clamp-2">
                           {preset.label}
                         </div>
                       </button>
@@ -215,6 +267,36 @@ export const DonatePage: React.FC = () => {
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1">Minimum donation amount: ₹100</p>
                 </div>
+
+                {/* Dynamic Complimentary Passes Callout */}
+                {complimentaryPasses > 0 ? (
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-pink-50 via-rose-50 to-pink-50 border-2 border-pink-300 text-slate-800 flex items-start gap-3 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-pip-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <Gift className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-pip-900 text-sm">
+                          🎉 {complimentaryPasses} Complimentary Event Passes Included!
+                        </span>
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-pip-600 text-white">
+                          VIP Benefit
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        On payment approval, you will receive a <strong>Donation Receipt & Thank You Email</strong> along with{' '}
+                        <strong>{complimentaryPasses} complimentary event passes with QR codes</strong> sent directly to your registered email!
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-pip-600 shrink-0" />
+                      <span>Sponsorship tiers of ₹10,000 and above include complimentary event passes (Silver: 2, Gold: 5, Platinum: 7 passes).</span>
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Donor Details Card */}
@@ -391,27 +473,38 @@ export const DonatePage: React.FC = () => {
               </p>
             </div>
 
-            {/* Authoritative Ticket Notice */}
-            <div className="p-5 bg-amber-50 rounded-3xl border border-amber-200 text-amber-900 space-y-2 text-xs">
-              <div className="flex items-center space-x-1.5 font-bold text-amber-900">
-                <Info className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Event Entry Notice</span>
+            {/* Complimentary Passes & Entry Notice */}
+            <div className="p-5 bg-gradient-to-br from-pink-50 to-rose-50 rounded-3xl border border-pink-200 text-slate-800 space-y-3 text-xs shadow-xs">
+              <div className="flex items-center space-x-2 font-bold text-pip-900">
+                <Gift className="w-4 h-4 text-pip-600 shrink-0" />
+                <span className="text-sm">Complimentary Passes Included</span>
               </div>
-              <p className="text-amber-800 leading-relaxed">
-                Please note that pure donations directly fund patient medical aid and cancer care,
-                and
-                <strong> do not include event admission passes</strong>.
+              <p className="text-slate-600 leading-relaxed">
+                Official sponsorship contributions include complimentary passes to the Party In Pink 5.0 Zumba event:
               </p>
-              <p className="text-amber-800 leading-relaxed pt-1">
-                If you wish to participate in the Party In Pink Zumba fundraiser, please register
-                for an event pass:
+              <div className="space-y-1.5 font-semibold text-slate-700">
+                <div className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-pink-100 shadow-xs">
+                  <span>Platinum (₹20,000)</span>
+                  <span className="text-pip-700 font-extrabold font-mono">7 Passes</span>
+                </div>
+                <div className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-pink-100 shadow-xs">
+                  <span>Gold (₹15,000)</span>
+                  <span className="text-pip-700 font-extrabold font-mono">5 Passes</span>
+                </div>
+                <div className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-pink-100 shadow-xs">
+                  <span>Silver (₹10,000)</span>
+                  <span className="text-pip-700 font-extrabold font-mono">2 Passes</span>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed pt-1">
+                Upon payment approval, you will receive both your <strong>Donation Receipt</strong> and your <strong>Official Passes with QR codes</strong>.
               </p>
-              <div className="pt-2">
+              <div className="pt-1 border-t border-pink-200/60">
                 <Link
                   to="/register"
                   className="inline-flex items-center space-x-1 font-bold text-pip-700 hover:text-pip-800"
                 >
-                  <span>Register for Event Passes</span>
+                  <span>Looking only for individual/group tickets?</span>
                   <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>

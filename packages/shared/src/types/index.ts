@@ -117,6 +117,7 @@ export interface Donation {
   currency: 'INR';
   pan?: string | null;
   isAnonymousPublicly: boolean;
+  complimentaryPassesCount?: number;
   paymentStatus: PaymentStatus;
   donationStatus: DonationStatus;
   paymentSessionId?: string | null;

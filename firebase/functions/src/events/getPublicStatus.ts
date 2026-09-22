@@ -93,18 +93,19 @@ export const getPublicStatus = onCall(
     }
 
     if (donation) {
+      const passes = donation.complimentaryPassesCount || 0;
       return {
         publicReference: donation.publicReference,
         statusToken: donation.statusToken,
         type: 'DONATION',
         orderStatus: donation.donationStatus,
         paymentStatus: donation.paymentStatus,
-        participantCount: 0,
+        participantCount: passes,
         totalAmountPaise: donation.amountPaise,
         currency: donation.currency,
         buyerName: donation.isAnonymousPublicly ? 'Anonymous Donor' : donation.donor.fullName,
         organisationName: donation.organisationName || null,
-        ticketsIssuedCount: 0,
+        ticketsIssuedCount: donation.donationStatus === 'VERIFIED' ? passes : 0,
         createdAt: donation.createdAt,
       };
     }

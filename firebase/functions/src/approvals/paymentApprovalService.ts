@@ -5,7 +5,10 @@ import {
   OrderStatuses,
   TicketStatuses,
   DonationStatuses,
+  getDonationComplimentaryPasses,
+  type Order,
 } from '@pip/shared';
+import { generateStatusToken } from '../utils/reference.js';
 import { HttpsError } from 'firebase-functions/v2/https';
 
 export interface ProcessApprovalInput {
@@ -90,9 +93,8 @@ export async function processPaymentApproval(
       );
     }
     const eventRef = db.collection('events').doc(DEFAULT_EVENT_CODE);
-    const eventDoc =
-      decision === 'APPROVE' && entityType === 'ORDER' ? await transaction.get(eventRef) : null;
-    if (decision === 'APPROVE' && entityType === 'ORDER' && !eventDoc?.exists) {
+    const eventDoc = decision === 'APPROVE' ? await transaction.get(eventRef) : null;
+    if (decision === 'APPROVE' && !eventDoc?.exists) {
       throw new HttpsError('not-found', 'Event configuration not found.');
     }
     let ticketJobId: string | undefined = undefined;
@@ -157,10 +159,105 @@ export async function processPaymentApproval(
           { merge: true }
         );
       } else if (entityType === 'DONATION') {
-        // Authoritative Invariant: Donations NEVER create ticket jobs
+        const passes = Number(
+          entityData.complimentaryPassesCount ??
+            getDonationComplimentaryPasses(Number(entityData.amountPaise || 0))
+        );
+
+        if (passes > 0) {
+          const confirmedCount = Number(eventDoc!.data()?.capacity?.confirmedCount || 0);
+          const registeredCount = Number(
+            eventDoc!.data()?.capacity?.registeredCount || confirmedCount
+          );
+          const totalCapacity = Number(eventDoc!.data()?.capacity?.total || 0);
+          if (confirmedCount + passes > totalCapacity) {
+            throw new HttpsError(
+              'resource-exhausted',
+              'Event capacity was reached before complimentary passes could be allocated.'
+            );
+          }
+
+          transaction.update(eventRef, {
+            'capacity.confirmedCount': confirmedCount + passes,
+            'capacity.registeredCount': Math.max(registeredCount, confirmedCount + passes),
+            updatedAt: nowIso,
+          });
+
+          // Create an associated order for complimentary passes fulfillment
+          const donorOrderId = `DONOR_${entityId}`;
+          const orderRef = db.collection('orders').doc(donorOrderId);
+          const orderData: Order = {
+            id: donorOrderId,
+            publicReference: `${entityData.publicReference || entityId}-TKT`,
+            statusToken: entityData.statusToken || generateStatusToken(),
+            type: passes > 1 ? 'BULK' : 'SINGLE',
+            buyer: {
+              fullName: entityData.donor?.fullName || 'Valued Donor',
+              email: entityData.donor?.email || '',
+              mobileNumber: entityData.donor?.mobileNumber || '',
+              whatsappNumber: entityData.donor?.whatsappNumber || null,
+            },
+            organisationName: entityData.organisationName || null,
+            participantCount: passes,
+            unitPricePaise: 0,
+            totalAmountPaise: 0,
+            currency: 'INR',
+            paymentStatus: PaymentStatuses.VERIFIED,
+            orderStatus: OrderStatuses.PAYMENT_VERIFIED,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+          };
+          transaction.set(orderRef, orderData, { merge: true });
+
+          // Create attendee docs under orderRef.collection('attendees')
+          for (let i = 1; i <= passes; i++) {
+            const attRef = orderRef.collection('attendees').doc(`pass_${i}`);
+            const attendeeName =
+              i === 1
+                ? entityData.donor?.fullName || 'Valued Donor'
+                : `${entityData.donor?.fullName || 'Donor Guest'} - Guest ${i}`;
+            transaction.set(
+              attRef,
+              {
+                id: `pass_${i}`,
+                orderId: donorOrderId,
+                fullName: attendeeName,
+                email: entityData.donor?.email || '',
+                mobileNumber: entityData.donor?.mobileNumber || '',
+                whatsappNumber: entityData.donor?.whatsappNumber || null,
+                organisationName: entityData.organisationName || null,
+                ticketStatus: TicketStatuses.QUEUED,
+                createdAt: nowIso,
+                updatedAt: nowIso,
+              },
+              { merge: true }
+            );
+          }
+
+          // Enqueue ticket fulfillment job
+          const ticketJobRef = db.collection('ticketJobs').doc(donorOrderId);
+          ticketJobId = donorOrderId;
+          transaction.set(
+            ticketJobRef,
+            {
+              id: donorOrderId,
+              orderId: donorOrderId,
+              status: TicketStatuses.QUEUED,
+              attempts: 0,
+              maxAttempts: 5,
+              providerResult: null,
+              lastError: null,
+              createdAt: nowIso,
+              updatedAt: nowIso,
+            },
+            { merge: true }
+          );
+        }
+
         transaction.update(entityRef, {
           paymentStatus: PaymentStatuses.VERIFIED,
           donationStatus: DonationStatuses.VERIFIED,
+          complimentaryPassesCount: passes,
           updatedAt: nowIso,
         });
 

@@ -50,6 +50,20 @@ describe('Email Templates Engine', () => {
     expect(rendered.text).toContain('do not provide an 80G certificate');
   });
 
+  it('renders DONATION_THANK_YOU template with complimentary passes when ticketCount > 0', () => {
+    const rendered = renderEmail('DONATION_THANK_YOU', {
+      recipientName: 'Silver Sponsor',
+      reference: 'PIP5-D-SLV1234',
+      amountFormatted: '₹10,000',
+      ticketCount: 2,
+    });
+
+    expect(rendered.subject).toContain('PIP5-D-SLV1234');
+    expect(rendered.html).toContain('Complimentary Passes:');
+    expect(rendered.html).toContain('2 Passes Included');
+    expect(rendered.text).toContain('Complimentary Passes: 2 Passes Included');
+  });
+
   it('escapes untrusted recipient content in HTML emails', () => {
     const rendered = renderEmail('TICKET_ISSUED', {
       recipientName: '<img src=x onerror=alert(1)>',
