@@ -1,37 +1,21 @@
 import React, { useState } from 'react';
-import { Camera, ExternalLink, X, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { Camera, ExternalLink, X, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export interface GalleryPhoto {
   id: string;
   src: string;
-  title: string;
-  category: 'Zumba' | 'Community' | 'Celebration';
-  caption: string;
 }
 
 export const PAST_PHOTOS: GalleryPhoto[] = [
-  {
-    id: 'photo-1',
-    src: '/assets/images/pip4/zumba-close.jpg',
-    title: 'Moving Together',
-    category: 'Zumba',
-    caption: 'Participants dancing with energy and purpose on the SSMRV College campus.',
-  },
-  {
-    id: 'photo-2',
-    src: '/assets/images/pip4/community-group.jpg',
-    title: 'One Powerful Community',
-    category: 'Community',
-    caption: 'The Party In Pink 4.0 community together after a morning of movement and awareness.',
-  },
-  {
-    id: 'photo-3',
-    src: '/assets/images/pip4/friends-in-pink.jpg',
-    title: 'Smiles in Pink',
-    category: 'Celebration',
-    caption: 'Friends celebrating the spirit of breast cancer awareness at Party In Pink 4.0.',
-  },
+  { id: 'photo-1', src: '/assets/images/pip4/zumba-wide.jpg' },
+  { id: 'photo-2', src: '/assets/images/pip4/zumba-close.jpg' },
+  { id: 'photo-3', src: '/assets/images/pip4/community-group.jpg' },
+  { id: 'photo-4', src: '/assets/images/pip4/friends-in-pink.jpg' },
+  { id: 'photo-5', src: '/assets/images/pip4/community-at-ssmrv.jpg' },
+  { id: 'photo-6', src: '/assets/images/pip4/supporters-group.jpg' },
+  { id: 'photo-7', src: '/assets/images/0H9A1073_optimized.jpg' },
+  { id: 'photo-8', src: '/assets/images/ADI05791.webp' },
 ];
 
 export const GallerySection: React.FC = () => {
@@ -69,34 +53,28 @@ export const GallerySection: React.FC = () => {
           </h2>
           <p className="mt-3 text-base sm:text-lg text-slate-600">
             Scroll through candid smiles, high-energy Zumba sessions, and inspiring moments from
-            Party In Pink 4.0. Every photo tells a story of community, courage, and impact!
+            past editions. Every photo tells a story of community, courage, and impact!
           </p>
         </div>
 
         {/* Highlighted Photo Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mb-10">
           {PAST_PHOTOS.map((photo, index) => (
             <div
               key={photo.id}
               onClick={() => openLightbox(index)}
-              className="group relative rounded-2xl overflow-hidden bg-slate-900 shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1 h-72 sm:h-80"
+              className="group relative rounded-2xl overflow-hidden bg-slate-900 shadow-md hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1 aspect-[4/3] sm:h-64"
             >
               <img
                 src={photo.src}
-                alt={photo.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
+                alt="Party In Pink moment"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 loading="lazy"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
-              <div className="absolute bottom-0 inset-x-0 p-5 text-white">
-                <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-pip-600/90 text-white mb-2">
-                  {photo.category}
-                </span>
-                <h3 className="text-lg font-bold leading-snug">{photo.title}</h3>
-                <p className="text-xs text-slate-300 mt-1 line-clamp-2">{photo.caption}</p>
-                <div className="flex items-center space-x-1 text-xs text-pink-300 font-semibold mt-2 group-hover:underline">
-                  <span>Click to expand</span>
-                  <Sparkles className="w-3 h-3" />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-sm text-white px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center space-x-1.5 shadow-lg">
+                  <Maximize2 className="w-3.5 h-3.5 text-pink-300" />
+                  <span>View Photo</span>
                 </div>
               </div>
             </div>
@@ -158,11 +136,11 @@ export const GallerySection: React.FC = () => {
             </button>
 
             {/* Main Image */}
-            <div className="relative w-full max-h-[75vh] flex items-center justify-center overflow-hidden rounded-2xl bg-black">
+            <div className="relative w-full max-h-[80vh] flex items-center justify-center overflow-hidden rounded-2xl bg-black">
               <img
                 src={currentPhoto.src}
-                alt={currentPhoto.title}
-                className="max-h-[75vh] max-w-full object-contain"
+                alt="Party In Pink full view"
+                className="max-h-[80vh] max-w-full object-contain"
               />
 
               {/* Navigation Arrows */}
@@ -180,12 +158,6 @@ export const GallerySection: React.FC = () => {
               >
                 <ChevronRight className="w-6 h-6" />
               </button>
-            </div>
-
-            {/* Photo Caption & Info */}
-            <div className="mt-4 text-center text-white space-y-1">
-              <h4 className="text-lg font-bold">{currentPhoto.title}</h4>
-              <p className="text-sm text-slate-300">{currentPhoto.caption}</p>
             </div>
           </div>
         </div>

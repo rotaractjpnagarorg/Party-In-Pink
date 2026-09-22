@@ -1,80 +1,26 @@
 import React, { useState } from 'react';
-import { Camera, ExternalLink, X, ChevronLeft, ChevronRight, Heart, Sparkles } from 'lucide-react';
+import { Camera, ExternalLink, X, ChevronLeft, ChevronRight, Heart, Maximize2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface PhotoItem {
   id: string;
   src: string;
-  title: string;
-  category: 'All' | 'Zumba' | 'Community' | 'Celebration';
-  caption: string;
+  category: 'Zumba' | 'Community' | 'Celebration';
 }
 
 const ALL_PHOTOS: PhotoItem[] = [
-  {
-    id: 'p-1',
-    src: '/assets/images/pip4/zumba-wide.jpg',
-    title: 'Zumba Across the Courtyard',
-    category: 'Zumba',
-    caption: 'The Party In Pink community moving together across the SSMRV College courtyard.',
-  },
-  {
-    id: 'p-2',
-    src: '/assets/images/pip4/zumba-close.jpg',
-    title: 'Energy in Every Step',
-    category: 'Zumba',
-    caption: 'A candid view of participants enjoying the high-energy community Zumba session.',
-  },
-  {
-    id: 'p-3',
-    src: '/assets/images/pip4/community-group.jpg',
-    title: 'One Powerful Community',
-    category: 'Community',
-    caption: 'Participants and volunteers together after a morning dedicated to the cause.',
-  },
-  {
-    id: 'p-4',
-    src: '/assets/images/pip4/friends-in-pink.jpg',
-    title: 'Smiles in Pink',
-    category: 'Celebration',
-    caption: 'Friends celebrating breast cancer awareness at the Party In Pink photo wall.',
-  },
-  {
-    id: 'p-5',
-    src: '/assets/images/pip4/pink-wristband.jpg',
-    title: 'Wearing the Cause',
-    category: 'Community',
-    caption: 'A Party In Pink wristband being placed on a participant at registration.',
-  },
-  {
-    id: 'p-6',
-    src: '/assets/images/pip4/awareness-badges.jpg',
-    title: 'Badges of Awareness',
-    category: 'Community',
-    caption: 'Party In Pink badges prepared for participants and supporters.',
-  },
-  {
-    id: 'p-7',
-    src: '/assets/images/pip4/contribution-team.jpg',
-    title: 'The Team Behind the Impact',
-    category: 'Celebration',
-    caption:
-      'Volunteers and supporters marking the contribution to Sri Shankara Cancer Foundation.',
-  },
-  {
-    id: 'p-8',
-    src: '/assets/images/pip4/community-at-ssmrv.jpg',
-    title: 'Gathered at SSMRV College',
-    category: 'Community',
-    caption: 'Guests, participants, and organizers gathered at the home of Party In Pink 4.0.',
-  },
-  {
-    id: 'p-9',
-    src: '/assets/images/pip4/supporters-group.jpg',
-    title: 'Supporters Side by Side',
-    category: 'Celebration',
-    caption: 'A candid portrait of supporters who helped bring the event to life.',
-  },
+  { id: 'p-1', src: '/assets/images/pip4/zumba-wide.jpg', category: 'Zumba' },
+  { id: 'p-2', src: '/assets/images/pip4/zumba-close.jpg', category: 'Zumba' },
+  { id: 'p-3', src: '/assets/images/pip4/community-group.jpg', category: 'Community' },
+  { id: 'p-4', src: '/assets/images/pip4/friends-in-pink.jpg', category: 'Celebration' },
+  { id: 'p-5', src: '/assets/images/pip4/community-at-ssmrv.jpg', category: 'Community' },
+  { id: 'p-6', src: '/assets/images/pip4/supporters-group.jpg', category: 'Celebration' },
+  { id: 'p-7', src: '/assets/images/pip4/pink-wristband.jpg', category: 'Community' },
+  { id: 'p-8', src: '/assets/images/pip4/awareness-badges.jpg', category: 'Community' },
+  { id: 'p-9', src: '/assets/images/pip4/contribution-team.jpg', category: 'Celebration' },
+  { id: 'p-10', src: '/assets/images/0H9A1073_optimized.jpg', category: 'Zumba' },
+  { id: 'p-11', src: '/assets/images/ADI05791.webp', category: 'Celebration' },
+  { id: 'p-12', src: '/assets/images/IMG_7757.webp', category: 'Community' },
 ];
 
 export const GalleryPage: React.FC = () => {
@@ -161,29 +107,23 @@ export const GalleryPage: React.FC = () => {
         </div>
 
         {/* Photo Gallery Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mb-16">
           {filteredPhotos.map((photo, index) => (
             <div
               key={photo.id}
               onClick={() => openLightbox(index)}
-              className="group relative rounded-2xl overflow-hidden bg-slate-900 shadow-sm hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1 h-80"
+              className="group relative rounded-2xl overflow-hidden bg-slate-900 shadow-sm hover:shadow-xl transition-all cursor-pointer transform hover:-translate-y-1 aspect-[4/3] sm:h-72"
             >
               <img
                 src={photo.src}
-                alt={photo.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
+                alt="Party In Pink gallery"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 loading="lazy"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent opacity-80 group-hover:opacity-95 transition-opacity" />
-              <div className="absolute bottom-0 inset-x-0 p-5 text-white">
-                <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-pip-600 text-white mb-2">
-                  {photo.category}
-                </span>
-                <h3 className="text-lg font-bold leading-snug">{photo.title}</h3>
-                <p className="text-xs text-slate-300 mt-1 line-clamp-2">{photo.caption}</p>
-                <div className="flex items-center space-x-1 text-xs text-pink-300 font-semibold mt-2 group-hover:underline">
-                  <span>Click to view full photo</span>
-                  <Sparkles className="w-3.5 h-3.5" />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/35 transition-all flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-sm text-white px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center space-x-1.5 shadow-lg">
+                  <Maximize2 className="w-3.5 h-3.5 text-pink-300" />
+                  <span>View Photo</span>
                 </div>
               </div>
             </div>
@@ -239,11 +179,11 @@ export const GalleryPage: React.FC = () => {
             </button>
 
             {/* Main Image */}
-            <div className="relative w-full max-h-[75vh] flex items-center justify-center overflow-hidden rounded-2xl bg-black">
+            <div className="relative w-full max-h-[80vh] flex items-center justify-center overflow-hidden rounded-2xl bg-black">
               <img
                 src={currentPhoto.src}
-                alt={currentPhoto.title}
-                className="max-h-[75vh] max-w-full object-contain"
+                alt="Party In Pink full view"
+                className="max-h-[80vh] max-w-full object-contain"
               />
 
               {/* Navigation Arrows */}
@@ -261,12 +201,6 @@ export const GalleryPage: React.FC = () => {
               >
                 <ChevronRight className="w-6 h-6" />
               </button>
-            </div>
-
-            {/* Photo Caption & Info */}
-            <div className="mt-4 text-center text-white space-y-1">
-              <h4 className="text-lg font-bold">{currentPhoto.title}</h4>
-              <p className="text-sm text-slate-300">{currentPhoto.caption}</p>
             </div>
           </div>
         </div>
