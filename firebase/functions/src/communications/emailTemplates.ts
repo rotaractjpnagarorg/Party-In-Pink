@@ -73,7 +73,13 @@ export function renderEmail(
 
   if (templateKey === 'TICKET_ISSUED') {
     const subject = `🎟️ Your Passes for Party In Pink 5.0 are Confirmed! (${data.reference})`;
-    const qrData = encodeURIComponent(data.registrationId || data.reference);
+    const rawPassId = data.registrationId || data.reference;
+    const cleanPassId =
+      rawPassId && !rawPassId.startsWith('KH-EXISTING')
+        ? rawPassId
+        : data.reference;
+    const safePassId = escapeHtml(cleanPassId);
+    const qrData = encodeURIComponent(cleanPassId);
     const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${qrData}`;
 
     const html = baseLayout(
@@ -87,7 +93,7 @@ export function renderEmail(
         <div style="font-size: 11px; font-weight: 800; color: #db2777; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">Official Entry Pass QR</div>
         <img src="${qrImgUrl}" alt="Entry Pass QR Code" style="display: block; margin: 0 auto 12px auto; border-radius: 8px; border: 4px solid #ffffff; box-shadow: 0 4px 10px rgba(219,39,119,0.15);" width="180" height="180" />
         <div style="font-family: monospace; font-size: 16px; font-weight: bold; color: #831843; letter-spacing: 2px;">
-          PASS #${safe.registrationId}
+          PASS #${safePassId}
         </div>
         <div style="font-size: 12px; color: #9d174d; margin-top: 6px;">
           Show this QR code at the venue gate for instant check-in on <strong>11 October 2026, 7:30 AM</strong>.
@@ -96,7 +102,7 @@ export function renderEmail(
 
       <div class="details-box">
         <strong>Booking Reference:</strong> ${safe.reference}<br>
-        <strong>Ticket Pass ID:</strong> ${safe.registrationId}<br>
+        <strong>Ticket Pass ID:</strong> ${safePassId}<br>
         <strong>Number of Passes:</strong> ${safe.ticketCount}<br>
         <strong>Event Date:</strong> Sunday, 11 October 2026<br>
         <strong>Event Time:</strong> 7:30 AM onwards<br>
@@ -132,7 +138,7 @@ export function renderEmail(
       <p>Thank you for joining the movement to save lives through early detection!</p>
       `
     );
-    const text = `Hello ${data.recipientName},\n\nYour passes for Party In Pink 5.0 are confirmed!\nBooking Reference: ${data.reference}\nPass ID: ${data.registrationId || data.reference}\nPasses: ${data.ticketCount || 1}\n\nDress Code: Please wear pink attire!\nTrack status: ${data.statusUrl}\n\nRotaract Club of Bangalore JP Nagar`;
+    const text = `Hello ${data.recipientName},\n\nYour passes for Party In Pink 5.0 are confirmed!\nBooking Reference: ${data.reference}\nPass ID: ${cleanPassId}\nPasses: ${data.ticketCount || 1}\n\nDress Code: Please wear pink attire!\nTrack status: ${data.statusUrl}\n\nRotaract Club of Bangalore JP Nagar`;
     return { subject, html, text };
   }
 

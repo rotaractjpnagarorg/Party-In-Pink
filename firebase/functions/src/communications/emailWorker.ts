@@ -138,6 +138,10 @@ export async function processEmailJob(
       utr = sessionsSnap.docs[0].data().evidence?.transactionReference || null;
     }
 
+    if (registrationId && registrationId.startsWith('KH-EXISTING')) {
+      registrationId = reference;
+    }
+
     const templateData: EmailTemplateData = {
       recipientName: job.recipientName || 'Valued Participant',
       reference,

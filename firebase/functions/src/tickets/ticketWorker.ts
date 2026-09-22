@@ -70,8 +70,11 @@ async function ensureTicketEmailJobs(
         detail?.ticketPdfUrl ||
         (order.type === 'BULK' ? result?.ticketZipUrl : result?.ticketDetails[0]?.ticketPdfUrl) ||
         null;
-      const registrationId =
+      let registrationId =
         detail?.registrationId || result?.ticketDetails[0]?.registrationId || null;
+      if (registrationId && registrationId.startsWith('KH-EXISTING')) {
+        registrationId = order.publicReference;
+      }
 
       batch.set(snapshot.ref, {
         id: snapshot.id,
@@ -228,11 +231,22 @@ export async function processTicketJob(
     `[TicketWorker] Fulfilling passes for order ${order.publicReference} (${attendeesToFulfill.length} attendees)`
   );
 
+  const isDonorOrder =
+    order.id.startsWith('DONOR_') ||
+    order.publicReference.includes('-TKT') ||
+    Boolean((order as any).donorId);
+  const orderType: 'SINGLE' | 'BULK' | 'DONOR' = isDonorOrder
+    ? 'DONOR'
+    : order.type === 'BULK'
+      ? 'BULK'
+      : 'SINGLE';
+
   // 3. Invoke KonfHub Adapter
   let result;
   try {
     result = await issueKonfHubPasses({
-      orderType: order.type,
+      orderType,
+      orderReference: order.publicReference,
       attendees: attendeesToFulfill,
       organisationName: order.organisationName,
       onChunkIssued: async (attendeeIds, details) => {
@@ -332,12 +346,18 @@ export async function processTicketJob(
 
     // Post real-time ticket confirmation to Slack channel
     try {
+      const firstRegId = result.ticketDetails[0]?.registrationId;
+      const cleanRegId =
+        firstRegId && !firstRegId.startsWith('KH-EXISTING')
+          ? firstRegId
+          : order.publicReference;
+
       await notifySlackTicketIssued({
         orderReference: order.publicReference,
         buyerName: order.buyer.fullName,
         buyerEmail: order.buyer.email,
         ticketCount: allAttendees.length,
-        registrationId: result.ticketDetails[0]?.registrationId || null,
+        registrationId: cleanRegId,
       });
     } catch (slackErr) {
       console.warn('[TicketWorker] Slack ticket confirmation warning (non-blocking):', slackErr);

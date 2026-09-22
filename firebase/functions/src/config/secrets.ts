@@ -2,8 +2,22 @@ import { defineSecret, defineString } from 'firebase-functions/params';
 
 export const KONFHUB_API_KEY = defineSecret('KONFHUB_API_KEY');
 export const KONFHUB_EVENT_ID = defineSecret('KONFHUB_EVENT_ID');
-export const KONFHUB_INTERNAL_BULK_TICKET_ID = defineSecret('KONFHUB_INTERNAL_BULK_TICKET_ID');
-export const KONFHUB_INTERNAL_FREE_TICKET_ID = defineSecret('KONFHUB_INTERNAL_FREE_TICKET_ID');
+export const KONFHUB_INTERNAL_SINGLE_TICKET_ID = defineString(
+  'KONFHUB_INTERNAL_SINGLE_TICKET_ID',
+  { default: '121417' }
+);
+export const KONFHUB_INTERNAL_BULK_TICKET_ID = defineString(
+  'KONFHUB_INTERNAL_BULK_TICKET_ID',
+  { default: '121588' }
+);
+export const KONFHUB_INTERNAL_DONOR_TICKET_ID = defineString(
+  'KONFHUB_INTERNAL_DONOR_TICKET_ID',
+  { default: '121589' }
+);
+export const KONFHUB_INTERNAL_FREE_TICKET_ID = defineString(
+  'KONFHUB_INTERNAL_FREE_TICKET_ID',
+  { default: '121589' }
+);
 export const KONFHUB_ACCESS_CODE_BULK = defineSecret('KONFHUB_ACCESS_CODE_BULK');
 export const KONFHUB_ACCESS_CODE_FREE = defineSecret('KONFHUB_ACCESS_CODE_FREE');
 
@@ -27,8 +41,6 @@ export const PUBLIC_WEB_URL = defineString('PUBLIC_WEB_URL', {
 export const konfHubSecrets = [
   KONFHUB_API_KEY,
   KONFHUB_EVENT_ID,
-  KONFHUB_INTERNAL_BULK_TICKET_ID,
-  KONFHUB_INTERNAL_FREE_TICKET_ID,
   KONFHUB_ACCESS_CODE_BULK,
   KONFHUB_ACCESS_CODE_FREE,
   SLACK_WEBHOOK_URL,

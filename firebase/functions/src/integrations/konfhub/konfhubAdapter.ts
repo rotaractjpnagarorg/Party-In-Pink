@@ -5,7 +5,8 @@ import {
   KONFHUB_API_KEY,
   KONFHUB_EVENT_ID,
   KONFHUB_INTERNAL_BULK_TICKET_ID,
-  KONFHUB_INTERNAL_FREE_TICKET_ID,
+  KONFHUB_INTERNAL_DONOR_TICKET_ID,
+  KONFHUB_INTERNAL_SINGLE_TICKET_ID,
 } from '../../config/secrets.js';
 
 export interface KonfHubAttendee {
@@ -19,7 +20,8 @@ export interface KonfHubAttendee {
 }
 
 export interface IssuePassesInput {
-  orderType: 'SINGLE' | 'BULK';
+  orderType: 'SINGLE' | 'BULK' | 'DONOR';
+  orderReference?: string;
   attendees: KonfHubAttendee[];
   organisationName?: string | null;
   onChunkIssued?: (
@@ -115,27 +117,48 @@ export async function issueKonfHubPasses(input: IssuePassesInput): Promise<Issue
   const apiKey = KONFHUB_API_KEY.value();
   const eventId = KONFHUB_EVENT_ID.value();
 
-  const primaryTicketId =
-    input.orderType === 'BULK'
-      ? KONFHUB_INTERNAL_BULK_TICKET_ID.value()
-      : KONFHUB_INTERNAL_FREE_TICKET_ID.value();
+  let primaryTicketId: string;
+  let primaryAccessCode: string | undefined;
 
-  const fallbackTicketId = KONFHUB_INTERNAL_FREE_TICKET_ID.value();
+  if (input.orderType === 'DONOR') {
+    primaryTicketId =
+      KONFHUB_INTERNAL_DONOR_TICKET_ID.value() ||
+      process.env.KONFHUB_INTERNAL_DONOR_TICKET_ID ||
+      '121589';
+    primaryAccessCode = KONFHUB_ACCESS_CODE_FREE.value() || undefined;
+  } else if (input.orderType === 'BULK') {
+    primaryTicketId =
+      KONFHUB_INTERNAL_BULK_TICKET_ID.value() ||
+      process.env.KONFHUB_INTERNAL_BULK_TICKET_ID ||
+      '121588';
+    primaryAccessCode = KONFHUB_ACCESS_CODE_BULK.value() || undefined;
+  } else {
+    primaryTicketId =
+      KONFHUB_INTERNAL_SINGLE_TICKET_ID.value() ||
+      process.env.KONFHUB_INTERNAL_SINGLE_TICKET_ID ||
+      '121417';
+    primaryAccessCode = KONFHUB_ACCESS_CODE_FREE.value() || undefined;
+  }
 
-  const primaryAccessCode =
-    input.orderType === 'BULK'
-      ? KONFHUB_ACCESS_CODE_BULK.value()
-      : KONFHUB_ACCESS_CODE_FREE.value();
+  const fallbackTicketId = primaryTicketId;
+  const fallbackAccessCode = primaryAccessCode;
 
-  const fallbackAccessCode = KONFHUB_ACCESS_CODE_FREE.value();
-
-  if (!apiKey || !eventId || !primaryTicketId || !fallbackTicketId) {
+  if (!apiKey || !eventId || !primaryTicketId) {
     throw new Error('KonfHub secrets are not fully configured.');
   }
 
   console.log(
-    `[KonfHub] Starting pass issuance for ${input.attendees.length} attendees (${input.orderType})`
+    `[KonfHub] Starting pass issuance for ${input.attendees.length} attendees (${input.orderType}, Ticket ID: ${primaryTicketId})`
   );
+
+  const getStandardPassId = (globalIdx: number): string => {
+    if (input.orderReference) {
+      return input.attendees.length > 1
+        ? `${input.orderReference}-P${String(globalIdx + 1).padStart(2, '0')}`
+        : input.orderReference;
+    }
+    return `PIP5-PASS-${Date.now().toString().slice(-6)}-${globalIdx + 1}`;
+  };
 
   const chunkSize = 20;
   const ticketDetails: IssuePassesResult['ticketDetails'] = [];
@@ -218,11 +241,16 @@ export async function issueKonfHubPasses(input: IssuePassesInput): Promise<Issue
             (bookingId && urlMap[bookingId]?.ticket) ||
             urlMap.ticket ||
             null;
-          const regId =
+          const globalIdx = chunkIndex * chunkSize + idx;
+          const defaultRegId = getStandardPassId(globalIdx);
+          const rawRegId =
             bookingId ||
             response.json?.registrations?.[idx]?.registration_id ||
-            response.json?.registration_id ||
-            `KH-${Date.now()}-${idx}`;
+            response.json?.registration_id;
+          const regId =
+            rawRegId && !String(rawRegId).includes('EXISTING')
+              ? String(rawRegId)
+              : defaultRegId;
           const detail = {
             attendeeId: att.id,
             email: att.email,
@@ -247,7 +275,8 @@ export async function issueKonfHubPasses(input: IssuePassesInput): Promise<Issue
         issuedCount += chunk.length;
         const chunkDetails: IssuePassesResult['ticketDetails'] = [];
         chunk.forEach((att, idx) => {
-          const regId = `KH-EXISTING-${Date.now()}-${idx}`;
+          const globalIdx = chunkIndex * chunkSize + idx;
+          const regId = getStandardPassId(globalIdx);
           const detail = {
             attendeeId: att.id,
             email: att.email,
