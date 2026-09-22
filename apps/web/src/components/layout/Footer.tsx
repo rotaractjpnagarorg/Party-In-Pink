@@ -137,7 +137,7 @@ export const Footer: React.FC = () => {
             </div>
             <div className="pt-2">
               <a
-                href="https://kwikpic-in.app.link/e/h5bGNMAx5Yb?uCode=VDACQM"
+                href="https://kwikpic-in.app.link/e/3ePvLoXTD6b?uCode=*GLPII"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 text-xs text-slate-300 hover:bg-slate-700 hover:text-white transition border border-slate-700"

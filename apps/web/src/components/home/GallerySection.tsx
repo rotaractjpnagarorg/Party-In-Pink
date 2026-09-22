@@ -106,16 +106,19 @@ export const GallerySection: React.FC = () => {
         {/* Kwikpic Album Callout Banner */}
         <div className="bg-gradient-to-r from-pip-900 via-pink-900 to-slate-900 rounded-3xl p-8 sm:p-10 text-white text-center shadow-xl relative overflow-hidden">
           <div className="relative z-10 max-w-2xl mx-auto space-y-4">
+            <span className="px-3 py-1 bg-white/10 rounded-full text-xs font-bold tracking-wide uppercase text-pink-300">
+              Consolidated Album • Last 4 Editions
+            </span>
             <h3 className="text-2xl sm:text-3xl font-bold">
-              Want to see all 500+ photos from the event?
+              Want to see all 500+ photos from past events?
             </h3>
             <p className="text-sm sm:text-base text-pink-100 leading-relaxed">
-              Explore the complete high-resolution gallery powered by Kwikpic. Find your candid
-              moments, stage performances, and community celebrations in full quality!
+              Explore the consolidated high-resolution gallery powered by Kwikpic across the last 4 editions.
+              Find your candid moments using smart Face Recognition in full quality!
             </p>
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
               <a
-                href="https://kwikpic-in.app.link/e/h5bGNMAx5Yb?uCode=VDACQM"
+                href="https://kwikpic-in.app.link/e/3ePvLoXTD6b?uCode=*GLPII"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-xl font-bold text-slate-900 bg-white hover:bg-pink-50 transition-all shadow-md text-sm"

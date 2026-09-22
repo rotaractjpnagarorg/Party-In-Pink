@@ -113,8 +113,8 @@ export const GalleryPage: React.FC = () => {
           </h1>
           <p className="mt-3 text-base sm:text-lg text-slate-600 leading-relaxed">
             Take a look back at the incredible moments, smiles, and high-energy Zumba sessions that
-            defined Party In Pink 4.0. Every snapshot represents a life touched and an awareness
-            spark ignited!
+            defined Party In Pink. Every snapshot represents a life touched and an awareness spark
+            ignited!
           </p>
         </div>
 
@@ -122,18 +122,18 @@ export const GalleryPage: React.FC = () => {
         <div className="mb-10 bg-gradient-to-r from-pink-600 via-pip-600 to-rose-600 rounded-3xl p-6 sm:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg shadow-pip-500/20">
           <div className="space-y-2 text-center md:text-left">
             <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-bold tracking-wide uppercase">
-              Official Full Album
+              Consolidated Album • Last 4 Editions
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold">
               Browse 500+ High-Resolution Photos on Kwikpic
             </h2>
             <p className="text-sm text-pink-100 max-w-xl">
-              Find photos of yourself and your friends using smart face search or browse the entire
-              event collection in original quality.
+              Consolidated Kwikpic album of the last 4 editions. Find photos of yourself using smart
+              face search or explore the complete event collection in original quality.
             </p>
           </div>
           <a
-            href="https://kwikpic-in.app.link/e/h5bGNMAx5Yb?uCode=VDACQM"
+            href="https://kwikpic-in.app.link/e/3ePvLoXTD6b?uCode=*GLPII"
             target="_blank"
             rel="noopener noreferrer"
             className="shrink-0 inline-flex items-center space-x-2 px-6 py-3.5 rounded-xl font-bold text-slate-900 bg-white hover:bg-pink-50 transition-all shadow-md text-sm sm:text-base hover:scale-105 active:scale-100"
@@ -199,15 +199,15 @@ export const GalleryPage: React.FC = () => {
             Be Part of Party In Pink 5.0
           </h3>
           <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-            Create memories of your own while supporting life-saving cancer treatment at Sri
-            Shankara Cancer Hospital.
+            Party In Pink 5.0 is happening this season! Create memories of your own while supporting
+            life-saving cancer treatment at Sri Shankara Cancer Hospital.
           </p>
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               to="/register"
               className="w-full sm:w-auto px-7 py-3 rounded-xl font-bold text-white bg-pip-600 hover:bg-pip-700 shadow-md shadow-pip-600/20 transition-all text-sm"
             >
-              Register for Next Edition
+              Register for 5.0 — ₹239
             </Link>
             <Link
               to="/donate"
