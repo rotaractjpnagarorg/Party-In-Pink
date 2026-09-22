@@ -73,11 +73,22 @@ export function renderEmail(
 
   if (templateKey === 'TICKET_ISSUED') {
     const subject = `🎟️ Your Passes for Party In Pink 5.0 are Confirmed! (${data.reference})`;
-    const rawPassId = data.registrationId || data.reference;
-    const cleanPassId =
-      rawPassId && !rawPassId.startsWith('KH-EXISTING')
-        ? rawPassId
-        : data.reference;
+    let cleanPassId = data.registrationId || data.reference;
+
+    if (cleanPassId.startsWith('PIP5-S-')) {
+      cleanPassId = cleanPassId.replace('PIP5-S-', 'PIP5-REG-');
+    } else if (cleanPassId.startsWith('PIP5-B-')) {
+      cleanPassId = cleanPassId.replace('PIP5-B-', 'PIP5-BUL-');
+    } else if (cleanPassId.startsWith('PIP5-D-')) {
+      cleanPassId = cleanPassId.replace('PIP5-D-', 'PIP5-DON-');
+    } else if (cleanPassId.startsWith('KH-EXISTING') || !cleanPassId.startsWith('PIP5-')) {
+      cleanPassId = data.reference
+        .replace(/^PIP5-S-/, 'PIP5-REG-')
+        .replace(/^PIP5-B-/, 'PIP5-BUL-')
+        .replace(/^PIP5-D-/, 'PIP5-DON-');
+    }
+    cleanPassId = cleanPassId.replace(/-TKT(?=-|$)/i, '');
+
     const safePassId = escapeHtml(cleanPassId);
     const qrData = encodeURIComponent(cleanPassId);
     const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${qrData}`;

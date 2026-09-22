@@ -152,12 +152,29 @@ export async function issueKonfHubPasses(input: IssuePassesInput): Promise<Issue
   );
 
   const getStandardPassId = (globalIdx: number): string => {
-    if (input.orderReference) {
-      return input.attendees.length > 1
-        ? `${input.orderReference}-P${String(globalIdx + 1).padStart(2, '0')}`
-        : input.orderReference;
+    const raw = input.orderReference || '';
+    const suffix =
+      input.attendees.length > 1
+        ? `-P${String(globalIdx + 1).padStart(2, '0')}`
+        : '';
+
+    let coreCode = raw
+      .replace(/^PIP5-[SBD]-/i, '')
+      .replace(/-TKT.*$/i, '')
+      .replace(/^DONOR_/i, '')
+      .trim();
+
+    if (!coreCode) {
+      coreCode = Date.now().toString(36).toUpperCase().slice(-6);
     }
-    return `PIP5-PASS-${Date.now().toString().slice(-6)}-${globalIdx + 1}`;
+
+    if (input.orderType === 'DONOR') {
+      return `PIP5-DON-${coreCode}${suffix}`;
+    } else if (input.orderType === 'BULK') {
+      return `PIP5-BUL-${coreCode}${suffix}`;
+    } else {
+      return `PIP5-REG-${coreCode}`;
+    }
   };
 
   const chunkSize = 20;
@@ -242,15 +259,7 @@ export async function issueKonfHubPasses(input: IssuePassesInput): Promise<Issue
             urlMap.ticket ||
             null;
           const globalIdx = chunkIndex * chunkSize + idx;
-          const defaultRegId = getStandardPassId(globalIdx);
-          const rawRegId =
-            bookingId ||
-            response.json?.registrations?.[idx]?.registration_id ||
-            response.json?.registration_id;
-          const regId =
-            rawRegId && !String(rawRegId).includes('EXISTING')
-              ? String(rawRegId)
-              : defaultRegId;
+          const regId = getStandardPassId(globalIdx);
           const detail = {
             attendeeId: att.id,
             email: att.email,

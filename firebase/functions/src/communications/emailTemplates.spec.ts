@@ -74,4 +74,26 @@ describe('Email Templates Engine', () => {
     expect(rendered.html).not.toContain('<img src=x');
     expect(rendered.html).toContain('&lt;img src=x onerror=alert(1)&gt;');
   });
+
+  it('formats PASS IDs correctly with PIP5-REG, PIP5-BUL, and PIP5-DON prefixes', () => {
+    const regular = renderEmail('TICKET_ISSUED', {
+      recipientName: 'Single Attendee',
+      reference: 'PIP5-S-ABC123',
+    });
+    expect(regular.html).toContain('PASS #PIP5-REG-ABC123');
+
+    const bulk = renderEmail('TICKET_ISSUED', {
+      recipientName: 'Bulk Attendee',
+      reference: 'PIP5-B-XYZ789',
+      registrationId: 'PIP5-BUL-XYZ789-P02',
+    });
+    expect(bulk.html).toContain('PASS #PIP5-BUL-XYZ789-P02');
+
+    const donor = renderEmail('TICKET_ISSUED', {
+      recipientName: 'Donor Guest',
+      reference: 'PIP5-D-DON999',
+      registrationId: 'PIP5-DON-DON999-P01',
+    });
+    expect(donor.html).toContain('PASS #PIP5-DON-DON999-P01');
+  });
 });

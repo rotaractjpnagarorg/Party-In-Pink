@@ -61,11 +61,10 @@ async function ensureTicketEmailJobs(
     existing.forEach((snapshot, index) => {
       if (snapshot.exists) return;
       const recipient = chunk[index]!;
-      const detail = result?.ticketDetails.find(
-        (d) =>
-          d.email.toLowerCase() === recipient.email.toLowerCase() ||
-          (recipient.id && d.attendeeId === recipient.id)
-      );
+      const detail =
+        result?.ticketDetails.find((d) => recipient.id && d.attendeeId === recipient.id) ||
+        result?.ticketDetails.find((d) => d.email.toLowerCase() === recipient.email.toLowerCase()) ||
+        result?.ticketDetails[0];
       const ticketPdfUrl =
         detail?.ticketPdfUrl ||
         (order.type === 'BULK' ? result?.ticketZipUrl : result?.ticketDetails[0]?.ticketPdfUrl) ||
