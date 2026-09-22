@@ -39,7 +39,7 @@ export const DetailsPage: React.FC = () => {
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
                 Special discounted registration for corporate teams, college contingents,
-                Rotaract/Rotary clubs, and NGO groups (min 5 participants).
+                Rotaract/Rotary clubs, and NGO groups (min 10 passes).
               </p>
             </div>
             <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">

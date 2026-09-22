@@ -40,7 +40,7 @@ export const createDonation = onCall(
     region: 'asia-south1',
     maxInstances: 10,
     cors: true,
-    enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== 'true',
+    enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
   },
   async (request) => {
     const parseResult = donationInputSchema.safeParse(request.data);

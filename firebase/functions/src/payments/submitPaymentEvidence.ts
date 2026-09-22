@@ -97,7 +97,7 @@ export const submitPaymentEvidence = onCall(
   {
     region: 'asia-south1',
     maxInstances: 10,
-    enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== 'true',
+    enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
     secrets: [SLACK_WEBHOOK_URL],
   },
   async (request) => {
