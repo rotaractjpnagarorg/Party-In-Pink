@@ -51,12 +51,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <Link to="/donate" className="hover:text-pip-400 transition">
-                  Support the Cause / Donate
-                </Link>
-              </li>
-              <li>
-                <Link to="/sponsor" className="hover:text-pip-400 transition">
-                  Sponsorship Opportunities
+                  Donate & Sponsorship
                 </Link>
               </li>
               <li>

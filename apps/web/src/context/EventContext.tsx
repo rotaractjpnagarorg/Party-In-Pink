@@ -70,7 +70,17 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 export const useEvent = (): EventContextValue => {
   const context = useContext(EventContext);
   if (!context) {
-    throw new Error('useEvent must be used within an EventProvider');
+    return {
+      event: DEFAULT_PIP5_CONFIG,
+      loading: false,
+      error: null,
+      isRegistrationOpen: DEFAULT_PIP5_CONFIG.status === EventStatuses.REGISTRATION_OPEN,
+      isAnnounced: DEFAULT_PIP5_CONFIG.status === EventStatuses.ANNOUNCED,
+      isPaused: DEFAULT_PIP5_CONFIG.status === EventStatuses.REGISTRATION_PAUSED,
+      isClosed: DEFAULT_PIP5_CONFIG.status === EventStatuses.REGISTRATION_CLOSED,
+      isEventDay: DEFAULT_PIP5_CONFIG.status === EventStatuses.EVENT_DAY,
+      isCompleted: DEFAULT_PIP5_CONFIG.status === EventStatuses.COMPLETED,
+    };
   }
   return context;
 };

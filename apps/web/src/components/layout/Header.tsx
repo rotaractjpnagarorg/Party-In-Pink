@@ -10,7 +10,6 @@ import {
   Camera,
   Info,
   Heart,
-  Handshake,
   Home,
 } from 'lucide-react';
 import { useEvent } from '../../context/EventContext.js';
@@ -36,9 +35,8 @@ export const Header: React.FC = () => {
     { name: 'About Us', path: '/about', icon: Info },
     { name: 'Event Photos', path: '/gallery', icon: Camera },
     { name: 'Register', path: '/register', icon: UserPlus, highlight: isRegistrationOpen },
-    { name: 'Bulk Register', path: '/bulk', icon: Users },
-    { name: 'Donate', path: '/donate', icon: Heart },
-    { name: 'Sponsor', path: '/sponsor', icon: Handshake },
+    { name: 'Group Passes', path: '/bulk', icon: Users },
+    { name: 'Donate & Sponsor', path: '/donate', icon: Heart },
     { name: 'Check Status', path: '/status', icon: Search },
   ];
 
@@ -46,8 +44,7 @@ export const Header: React.FC = () => {
     { name: 'About', path: '/about' },
     { name: 'Photos', path: '/gallery' },
     { name: 'Group Passes', path: '/bulk' },
-    { name: 'Donate', path: '/donate' },
-    { name: 'Sponsors', path: '/sponsor' },
+    { name: 'Donate & Sponsor', path: '/donate' },
     { name: 'Check Status', path: '/status' },
   ];
 
@@ -80,7 +77,9 @@ export const Header: React.FC = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-1.5">
             {desktopNavLinks.map((link) => {
-              const isActive = location.pathname === link.path;
+              const isActive =
+                location.pathname === link.path ||
+                (link.path === '/donate' && location.pathname === '/sponsor');
               return (
                 <Link
                   key={link.path}
@@ -138,7 +137,9 @@ export const Header: React.FC = () => {
       {mobileMenuOpen && (
         <div className="md:hidden border-b border-slate-200 bg-white/95 backdrop-blur-md px-4 pt-2 pb-6 space-y-2 animate-in fade-in slide-in-from-top-3 duration-150">
           {mobileNavLinks.map((link) => {
-            const isActive = location.pathname === link.path;
+            const isActive =
+              location.pathname === link.path ||
+              (link.path === '/donate' && location.pathname === '/sponsor');
             return (
               <Link
                 key={link.path}
