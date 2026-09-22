@@ -216,17 +216,27 @@ export const DonatePage: React.FC = () => {
         functions,
         'createDonation'
       );
-      const response = await createDonationCallable({
+
+      const payload: Record<string, unknown> = {
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         mobileNumber: mobileNumber.trim(),
         whatsappSameAsMobile: whatsappSame,
-        whatsappNumber: whatsappSame ? undefined : whatsappNumber.trim(),
         amountPaise: effectiveAmountPaise,
-        pan: pan.trim() ? pan.trim().toUpperCase() : undefined,
-        organisationName: organisationName.trim() || undefined,
         isAnonymousPublicly: isAnonymous,
-      });
+      };
+
+      if (!whatsappSame && whatsappNumber.trim()) {
+        payload.whatsappNumber = whatsappNumber.trim();
+      }
+      if (pan.trim()) {
+        payload.pan = pan.trim().toUpperCase();
+      }
+      if (organisationName.trim()) {
+        payload.organisationName = organisationName.trim();
+      }
+
+      const response = await createDonationCallable(payload);
 
       const data = response.data;
       if (data?.statusToken) {

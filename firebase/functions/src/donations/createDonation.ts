@@ -12,24 +12,40 @@ import {
 } from '@pip/shared';
 
 const donationInputSchema = z.object({
-  fullName: z.string().min(2, 'Full Name must be at least 2 characters'),
-  email: z.string().email('Valid email address is required'),
+  fullName: z.string().trim().min(2, 'Full Name must be at least 2 characters'),
+  email: z.string().trim().toLowerCase().email('Valid email address is required'),
   mobileNumber: z
     .string()
+    .trim()
     .regex(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian mobile number (6-9)'),
   whatsappSameAsMobile: z.boolean().default(true),
-  whatsappNumber: z.string().optional(),
+  whatsappNumber: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((val) => (val ? val : null)),
   amountPaise: z
     .number()
     .int('Amount must be an integer')
     .min(10000, 'Minimum donation is ₹100 (10,000 paise)'),
   pan: z
     .string()
-    .regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 'Invalid PAN format (e.g. ABCDE1234F)')
+    .trim()
+    .toUpperCase()
     .optional()
-    .or(z.literal('')),
+    .nullable()
+    .refine((val) => !val || /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(val), {
+      message: 'Invalid PAN format (e.g. ABCDE1234F)',
+    })
+    .transform((val) => (val ? val : null)),
   isAnonymousPublicly: z.boolean().default(false),
-  organisationName: z.string().optional(),
+  organisationName: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((val) => (val ? val : null)),
 });
 
 /**

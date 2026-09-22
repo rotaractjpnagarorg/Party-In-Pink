@@ -22,6 +22,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Only process http(s) requests; ignore chrome-extension:// and other non-http schemes
+  if (!url.protocol.startsWith('http')) {
+    return;
+  }
+
   // Never cache Firebase APIs, Firestore, or Cloud Functions
   if (
     url.hostname.includes('firebaseio.com') ||
