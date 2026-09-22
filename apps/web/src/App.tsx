@@ -53,6 +53,8 @@ const AdminReportsPage = lazy(() =>
   import('./pages/admin/AdminReportsPage.js').then((m) => ({ default: m.AdminReportsPage }))
 );
 
+import { ScrollToTopButton, ScrollToTopOnNav } from './components/common/ScrollToTop.js';
+
 const PageLoader: React.FC = () => (
   <div className="flex items-center justify-center min-h-[50vh]">
     <div className="w-8 h-8 border-4 border-pip-500 border-t-transparent rounded-full animate-spin"></div>
@@ -64,6 +66,8 @@ export const App: React.FC = () => {
     <EventProvider>
       <AdminAuthProvider>
         <BrowserRouter>
+          <ScrollToTopOnNav />
+          <ScrollToTopButton />
           <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public routes with Header/Footer */}
