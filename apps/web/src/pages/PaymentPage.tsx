@@ -63,6 +63,7 @@ export const PaymentPage: React.FC = () => {
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
   const [receiptStoragePath, setReceiptStoragePath] = useState<string | null>(null);
   const [isAnalyzingReceipt, setIsAnalyzingReceipt] = useState(false);
+  const [ocrStep, setOcrStep] = useState<'IDLE' | 'UPLOADING' | 'SCANNING' | 'DETECTED' | 'NOT_FOUND'>('IDLE');
   const [ocrSuccess, setOcrSuccess] = useState(false);
   const [ocrMessage, setOcrMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -126,14 +127,18 @@ export const PaymentPage: React.FC = () => {
 
     setReceiptPreviewUrl(URL.createObjectURL(file));
     setIsAnalyzingReceipt(true);
+    setOcrStep('UPLOADING');
     setError(null);
     let uploaded = false;
 
     try {
       const path = `receipts/${session.sessionId}/receipt`;
-      await uploadBytes(ref(storage, path), file);
+      await uploadBytes(ref(storage, path), file, {
+        contentType: file.type || 'image/jpeg',
+      });
       uploaded = true;
       setReceiptStoragePath(path);
+      setOcrStep('SCANNING');
 
       const analyze = httpsCallable<
         { statusToken: string; sessionId: string; storagePath: string },
@@ -149,18 +154,22 @@ export const PaymentPage: React.FC = () => {
       if (response.data.transactionReference) {
         setUtr(response.data.transactionReference);
         setOcrSuccess(true);
+        setOcrStep('DETECTED');
         setOcrMessage(`12-Digit UTR detected: ${response.data.transactionReference}`);
       } else {
         setOcrSuccess(false);
-        setOcrMessage('Screenshot uploaded! UTR was not clearly detected; you can optionally verify it below.');
+        setOcrStep('NOT_FOUND');
+        setOcrMessage('Screenshot uploaded! UTR was not clearly detected; you can verify it below.');
       }
     } catch (receiptError) {
       console.error('Receipt analysis error:', receiptError);
       if (uploaded) {
         setOcrSuccess(false);
+        setOcrStep('NOT_FOUND');
         setOcrMessage('Screenshot uploaded. You can optionally enter your 12-digit UTR below.');
       } else {
         setReceiptFile(null);
+        setOcrStep('IDLE');
         setError('Screenshot upload failed. Please try again.');
       }
     } finally {
@@ -197,7 +206,9 @@ export const PaymentPage: React.FC = () => {
       if (proofMode === 'SCREENSHOT' && receiptFile && !storagePath) {
         const path = `receipts/${session.sessionId}/receipt`;
         const storageRef = ref(storage, path);
-        await uploadBytes(storageRef, receiptFile);
+        await uploadBytes(storageRef, receiptFile, {
+          contentType: receiptFile.type || 'image/jpeg',
+        });
         storagePath = path;
       }
 
@@ -566,46 +577,99 @@ export const PaymentPage: React.FC = () => {
                       </label>
 
                       {receiptPreviewUrl ? (
-                        <div className="relative p-3 rounded-2xl border border-slate-200 bg-slate-50 flex items-center space-x-3">
-                          <img
-                            src={receiptPreviewUrl}
-                            alt="Receipt Preview"
-                            className="w-16 h-16 object-cover rounded-xl border border-slate-200 shadow-sm shrink-0"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-bold text-slate-900 truncate">
-                              {receiptFile?.name}
-                            </div>
-                            <div className="text-[11px] text-slate-500">
-                              {receiptFile ? `${(receiptFile.size / 1024).toFixed(0)} KB` : ''}
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-1.5">
-                            <label className="text-xs font-bold text-pip-600 hover:text-pip-700 cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
-                              Change
-                              <input
-                                type="file"
-                                accept="image/png, image/jpeg, image/webp"
-                                className="hidden"
-                                disabled={isAnalyzingReceipt}
-                                onChange={(e) => void handleReceiptFile(e.target.files?.[0] || null)}
+                        <div className="relative p-3.5 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden space-y-3">
+                          <div className="flex items-center space-x-3">
+                            <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shadow-sm shrink-0 bg-slate-900">
+                              <img
+                                src={receiptPreviewUrl}
+                                alt="Receipt Preview"
+                                className={`w-full h-full object-cover transition-opacity duration-300 ${
+                                  isAnalyzingReceipt ? 'opacity-70' : 'opacity-100'
+                                }`}
                               />
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setReceiptFile(null);
-                                setReceiptPreviewUrl(null);
-                                setReceiptStoragePath(null);
-                                setOcrSuccess(false);
-                                setOcrMessage(null);
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 transition"
-                              title="Remove screenshot"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
+                              {isAnalyzingReceipt && (
+                                <div className="animate-scanline bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_10px_#22d3ee]" />
+                              )}
+                              {ocrStep === 'DETECTED' && utr && (
+                                <div className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold shadow-md">
+                                  ✓
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-bold text-slate-900 truncate">
+                                {receiptFile?.name}
+                              </div>
+                              <div className="text-[11px] text-slate-500">
+                                {receiptFile ? `${(receiptFile.size / 1024).toFixed(0)} KB` : ''}
+                              </div>
+
+                              {/* Real-time State Badges */}
+                              {isAnalyzingReceipt && (
+                                <div className="inline-flex items-center space-x-1.5 mt-1.5 text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 animate-pulse">
+                                  <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
+                                  <span>{ocrStep === 'UPLOADING' ? 'Uploading...' : 'AI Reading UTR...'}</span>
+                                </div>
+                              )}
+                              {!isAnalyzingReceipt && ocrStep === 'DETECTED' && utr && (
+                                <div className="inline-flex items-center space-x-1 mt-1.5 text-[11px] font-extrabold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                  <Sparkles className="w-3 h-3 text-emerald-600" />
+                                  <span>UTR Auto-Detected</span>
+                                </div>
+                              )}
+                              {!isAnalyzingReceipt && ocrStep === 'NOT_FOUND' && (
+                                <div className="inline-flex items-center space-x-1 mt-1.5 text-[11px] font-semibold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                                  <span>Manual UTR Required</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center space-x-1.5 shrink-0">
+                              <label className="text-xs font-bold text-pip-600 hover:text-pip-700 cursor-pointer bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-sm transition">
+                                Change
+                                <input
+                                  type="file"
+                                  accept="image/png, image/jpeg, image/webp"
+                                  className="hidden"
+                                  disabled={isAnalyzingReceipt}
+                                  onChange={(e) => void handleReceiptFile(e.target.files?.[0] || null)}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                disabled={isAnalyzingReceipt}
+                                onClick={() => {
+                                  setReceiptFile(null);
+                                  setReceiptPreviewUrl(null);
+                                  setReceiptStoragePath(null);
+                                  setOcrSuccess(false);
+                                  setOcrStep('IDLE');
+                                  setOcrMessage(null);
+                                  setUtr('');
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 transition disabled:opacity-40"
+                                title="Remove screenshot"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
+
+                          {/* Live Scanning Step Card */}
+                          {isAnalyzingReceipt && (
+                            <div className="p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center space-x-2.5 shadow-sm">
+                              <Loader2 className="w-4 h-4 animate-spin text-blue-600 shrink-0" />
+                              <div className="flex-1 text-[11px]">
+                                <span className="font-bold text-blue-950">Google Cloud Vision AI: </span>
+                                <span>
+                                  {ocrStep === 'UPLOADING'
+                                    ? 'Uploading proof to secure vault...'
+                                    : 'Scanning image and parsing 12-digit transaction UTR...'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <label className="border-2 border-dashed border-slate-200 hover:border-pip-400 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition text-center bg-slate-50/50 hover:bg-pip-50/30">
@@ -616,11 +680,11 @@ export const PaymentPage: React.FC = () => {
                             Tap to upload screenshot
                           </span>
                           <span className="text-[11px] text-slate-400 mt-0.5">
-                            PNG, JPG, or WEBP up to 5MB
+                            PNG, JPG, or WEBP up to 10MB
                           </span>
                           <span className="text-[10px] font-semibold text-pip-600 mt-2 inline-flex items-center">
                             <Sparkles className="w-3 h-3 mr-1" />
-                            Google Cloud Vision will detect your UTR
+                            Google Cloud Vision AI auto-fills your 12-digit UTR
                           </span>
                           <input
                             type="file"
@@ -633,44 +697,52 @@ export const PaymentPage: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Scanning Feedback */}
-                    {isAnalyzingReceipt && (
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl flex items-center space-x-2.5 text-xs text-blue-900 animate-pulse">
-                        <Loader2 className="w-4 h-4 animate-spin text-blue-600 shrink-0" />
-                        <span>AI is reading transaction reference with Google Cloud Vision...</span>
-                      </div>
-                    )}
-
-                    {/* OCR Results Banner */}
+                    {/* OCR Results Display */}
                     {!isAnalyzingReceipt && receiptFile && (
                       <>
-                        {ocrSuccess && utr ? (
-                          <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-950 space-y-1">
-                            <div className="flex items-center space-x-1.5 font-bold text-emerald-800">
-                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                              <span>
-                                UTR Detected: <span className="font-mono text-sm tracking-wider">{utr}</span>
+                        {ocrStep === 'DETECTED' && ocrSuccess && utr ? (
+                          <div className="p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-400/80 rounded-2xl shadow-sm text-emerald-950 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-1.5 font-black text-emerald-900 text-xs tracking-wide uppercase">
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-600 animate-bounce" />
+                                <span>AI Auto-Detected UTR</span>
+                              </div>
+                              <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-full border border-emerald-300">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>12-Digit Reference Valid</span>
                               </span>
                             </div>
-                            <p className="text-[11px] text-emerald-700">
-                              Verified from your screenshot. Tap submit below to confirm your passes!
+
+                            <div className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-emerald-200 shadow-inner">
+                              <span className="text-[11px] font-medium text-slate-500">Detected Reference:</span>
+                              <span className="font-mono text-base font-black text-slate-900 tracking-widest">{utr}</span>
+                            </div>
+
+                            <p className="text-[11px] text-emerald-800 leading-snug">
+                              Extracted cleanly from your screenshot. You can confirm and submit below!
                             </p>
                           </div>
                         ) : (
-                          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-600">
-                                {ocrMessage || 'Screenshot uploaded. You can optionally verify the UTR below:'}
-                              </span>
+                          <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl text-xs space-y-2.5">
+                            <div className="flex items-start space-x-2">
+                              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                              <div>
+                                <p className="font-bold text-amber-900 text-xs">
+                                  Screenshot Attached (UTR not clearly readable)
+                                </p>
+                                <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                                  {ocrMessage || 'Please verify or enter your 12-digit UTR below so our finance desk can confirm instantly:'}
+                                </p>
+                              </div>
                             </div>
                             <input
                               type="text"
                               maxLength={12}
                               inputMode="numeric"
-                              placeholder="Optional: 12-digit UTR"
+                              placeholder="Enter 12-digit UTR (e.g. 429218273849)"
                               value={utr}
                               onChange={(e) => setUtr(e.target.value.replace(/\D/g, ''))}
-                              className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-pip-500"
+                              className="w-full px-3.5 py-2.5 rounded-xl border-2 border-amber-300 bg-white text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 placeholder:text-slate-400 placeholder:tracking-normal placeholder:font-sans placeholder:text-xs"
                             />
                           </div>
                         )}

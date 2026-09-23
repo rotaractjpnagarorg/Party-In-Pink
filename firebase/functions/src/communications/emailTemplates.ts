@@ -10,6 +10,7 @@ export interface EmailTemplateData {
   ticketPdfUrl?: string | null;
   bookingId?: string | null;
   konfhubEventId?: string | null;
+  reason?: string | null;
 }
 
 function escapeHtml(value: string | number | null | undefined): string {
@@ -35,6 +36,7 @@ export function renderEmail(
     utr: escapeHtml(data.utr || 'Screenshot uploaded'),
     registrationId: escapeHtml(data.registrationId || data.reference),
     ticketPdfUrl: data.ticketPdfUrl ? escapeHtml(data.ticketPdfUrl) : null,
+    reason: escapeHtml(data.reason || 'Payment transaction could not be reconciled with bank statements'),
   };
   const baseLayout = (title: string, bodyContent: string) => `
 <!DOCTYPE html>
@@ -228,6 +230,50 @@ export function renderEmail(
       `
     );
     const text = `Dear ${data.recipientName},\n\nThank you for your generous contribution of ${data.amountFormatted} to Party In Pink 5.0 (Ref: ${data.reference}). Your contribution supports breast cancer care and surgeries through Sri Shankara Cancer Foundation.\n\n${hasPasses ? `Complimentary Passes: ${data.ticketCount} Passes Included (Official tickets with QR codes sent in a separate email).\n\n` : ''}The event payment accounts do not provide an 80G certificate. Contact the organizing team before donating if you require an eligible receipt.\n\nRotaract Club of Bangalore JP Nagar`;
+    return { subject, html, text };
+  }
+
+  if (templateKey === 'PAYMENT_REJECTED') {
+    const subject = `⚠️ Action Needed: Payment Verification for Party In Pink 5.0 (${data.reference})`;
+    const html = baseLayout(
+      subject,
+      `
+      <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;">Payment Verification Unsuccessful</span>
+      <h2>Dear ${safe.recipientName},</h2>
+      <p>We are reaching out regarding your booking <strong>${safe.reference}</strong> for Party In Pink 5.0.</p>
+      <p>Our volunteer finance team reviewed the payment reference submitted for your registration, but could not reconcile it with our bank records.</p>
+
+      <div class="details-box" style="border-left: 4px solid #dc2626; background: #fff5f5;">
+        <strong>Booking Reference:</strong> ${safe.reference}<br>
+        <strong>Amount:</strong> ${safe.amountFormatted || 'N/A'}<br>
+        <strong>Reason:</strong> ${safe.reason}<br>
+        <strong>Current Status:</strong> Payment Rejected
+      </div>
+
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin: 20px 0;">
+        <strong style="color: #0f172a; font-size: 14px;">Next Steps / What to do:</strong>
+        <p style="margin: 8px 0 12px 0; font-size: 13px; color: #475569; line-height: 1.6;">
+          If you have already completed the transfer and believe this is an error, please contact our organizing and finance team immediately with your transaction screenshot or bank statement so we can manually confirm your passes:
+        </p>
+        <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155; line-height: 1.8;">
+          <li><strong>Email:</strong> <a href="mailto:pip@rotaractjpnagar.org" style="color: #db2777; font-weight: bold;">pip@rotaractjpnagar.org</a></li>
+          <li><strong>WhatsApp / Help Desk:</strong> +91 91082 94252 / +91 99029 45788</li>
+          <li><strong>Reference to quote:</strong> <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${safe.reference}</code></li>
+        </ul>
+      </div>
+
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="${safe.statusUrl}" class="button" style="background: #e11d48;">View Booking Status</a>
+      </div>
+
+      <p style="font-size: 12px; color: #64748b;">
+        If you have not yet completed the transfer, you may restart your registration on our website at any time.
+      </p>
+
+      <p>With warm regards,<br><strong>Organizing Committee • Party In Pink 5.0</strong><br>Rotaract Club of Bangalore JP Nagar</p>
+      `
+    );
+    const text = `Dear ${data.recipientName},\n\nWe are writing regarding your booking ${data.reference} for Party In Pink 5.0.\n\nOur finance team reviewed your submitted payment reference, but could not reconcile it with bank records.\n\nBooking Reference: ${data.reference}\nAmount: ${data.amountFormatted || 'N/A'}\nReason: ${data.reason || 'Payment could not be reconciled'}\nStatus: Payment Rejected\n\nWHAT TO DO NEXT:\nIf you have already transferred the amount, please contact our team with your payment proof:\n- Email: pip@rotaractjpnagar.org\n- WhatsApp/Phone: +91 91082 94252 / +91 99029 45788\n- Quote your booking reference: ${data.reference}\n\nTrack status: ${data.statusUrl}\n\nRotaract Club of Bangalore JP Nagar`;
     return { subject, html, text };
   }
 

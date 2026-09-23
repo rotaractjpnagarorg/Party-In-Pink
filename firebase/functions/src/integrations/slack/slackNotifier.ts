@@ -16,6 +16,8 @@ export interface SlackPaymentNotificationInput {
   source: string;
   ocrConfidence?: number | string | null;
   statusToken?: string | null;
+  isDuplicate?: boolean;
+  duplicateRef?: string | null;
 }
 
 export function escapeSlackMrkdwn(value: unknown): string {
@@ -50,6 +52,17 @@ export function buildPaymentApprovalBlocks(input: SlackPaymentNotificationInput)
         emoji: true,
       },
     },
+    ...(input.isDuplicate
+      ? [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `🚨 *WARNING: DUPLICATE PAYMENT REFERENCE DETECTED!*\nThis reference \`${input.utr || 'Screenshot'}\` was already used by ${input.duplicateRef ? `*${escapeSlackMrkdwn(input.duplicateRef)}*` : 'another registration'}! Marked as *UNDER REVIEW* — verify bank statement carefully before approving.`,
+            },
+          },
+        ]
+      : []),
     {
       type: 'section',
       fields: [

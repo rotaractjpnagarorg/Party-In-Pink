@@ -7,3 +7,25 @@
     scroll-behavior: smooth;
   }
 }
+
+@keyframes scanline {
+  0% {
+    top: 0%;
+    opacity: 0.2;
+  }
+  50% {
+    top: 75%;
+    opacity: 0.9;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.animate-scanline {
+  position: absolute;
+  height: 6px;
+  width: 100%;
+  animation: scanline 1.8s ease-in-out infinite;
+}

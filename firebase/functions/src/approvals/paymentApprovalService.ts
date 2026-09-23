@@ -371,6 +371,28 @@ export async function processPaymentApproval(
         createdAt: nowIso,
       });
 
+      // Enqueue rejection email job to notify customer
+      const customerEmail = entityData.buyer?.email || entityData.donor?.email || '';
+      const customerName = entityData.buyer?.fullName || entityData.donor?.fullName || 'Valued Participant';
+      if (customerEmail) {
+        const rejectionEmailRef = db.collection('emailJobs').doc();
+        transaction.set(rejectionEmailRef, {
+          id: rejectionEmailRef.id,
+          audience: entityType === 'ORDER' ? 'BUYER' : 'DONOR',
+          entityType,
+          entityId,
+          templateKey: 'PAYMENT_REJECTED',
+          recipientEmail: customerEmail,
+          recipientName: customerName,
+          priority: 'HIGH',
+          status: 'QUEUED',
+          attempts: 0,
+          reason: reason || 'Bank transaction could not be reconciled with payment proof',
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        });
+      }
+
       // Immutable Audit Log
       const auditRef = db.collection('auditLogs').doc();
       transaction.set(auditRef, {

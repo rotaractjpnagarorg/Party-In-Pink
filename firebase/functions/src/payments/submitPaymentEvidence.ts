@@ -245,7 +245,7 @@ export const submitPaymentEvidence = onCall(
     // 4. Enforce UTR uniqueness lock in Firestore transaction (PAY-P0-002)
     const nowIso = new Date().toISOString();
 
-    const submissionStatus = await db.runTransaction(async (transaction) => {
+    const submissionResult = await db.runTransaction(async (transaction) => {
       const entityRef = db
         .collection(entityType === 'ORDER' ? 'orders' : 'donations')
         .doc(entityId);
@@ -276,6 +276,7 @@ export const submitPaymentEvidence = onCall(
       });
 
       let isDuplicateUtr = false;
+      let duplicateEntityRef: string | null = null;
       if (normalizedUtr && normalizedUtr.length >= 6) {
         const utrRef = db.collection('paymentReferences').doc(normalizedUtr);
         const utrDoc = await transaction.get(utrRef);
@@ -283,6 +284,9 @@ export const submitPaymentEvidence = onCall(
         if (utrDoc.exists) {
           const existingLock = utrDoc.data();
           isDuplicateUtr = isDuplicatePaymentReference(existingLock?.paymentId, session.id);
+          if (isDuplicateUtr) {
+            duplicateEntityRef = existingLock?.entityReference || null;
+          }
         }
 
         // A reference already used by another payment is preserved as evidence
@@ -371,7 +375,11 @@ export const submitPaymentEvidence = onCall(
         updatedAt: nowIso,
       });
 
-      return nextPaymentStatus;
+      return {
+        status: nextPaymentStatus,
+        isDuplicate: isDuplicateUtr,
+        duplicateRef: duplicateEntityRef,
+      };
     });
 
     // Notify Slack channel asynchronously
@@ -390,6 +398,8 @@ export const submitPaymentEvidence = onCall(
         source: data.source || (data.storagePath ? 'RECEIPT_UPLOAD' : 'MANUAL_ENTRY'),
         ocrConfidence,
         statusToken: data.statusToken,
+        isDuplicate: submissionResult.isDuplicate,
+        duplicateRef: submissionResult.duplicateRef,
       });
     } catch (slackErr) {
       console.warn('Slack payment notification warning (non-blocking):', slackErr);
@@ -397,9 +407,9 @@ export const submitPaymentEvidence = onCall(
 
     return {
       success: true,
-      paymentStatus: submissionStatus,
+      paymentStatus: submissionResult.status,
       orderStatus:
-        submissionStatus === PaymentStatuses.REVIEW_REQUIRED
+        submissionResult.status === PaymentStatuses.REVIEW_REQUIRED
           ? OrderStatuses.REVIEW_REQUIRED
           : OrderStatuses.PAYMENT_SUBMITTED,
       orderReference: entityReference,

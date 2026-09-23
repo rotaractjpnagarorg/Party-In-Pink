@@ -156,6 +156,7 @@ export async function processEmailJob(
       registrationId,
       bookingId,
       ticketPdfUrl,
+      reason: (job as any).reason || null,
     };
     const { subject, html, text } = renderEmail(job.templateKey, templateData);
 
