@@ -86,7 +86,7 @@ describe('PaymentPage Component', () => {
 
     // Default is Option A (Screenshot)
     expect(screen.getByText(/Tap to upload screenshot/i)).toBeInTheDocument();
-    expect(screen.getByText(/Google Cloud Vision will detect your UTR/i)).toBeInTheDocument();
+    expect(screen.getByText(/Google Cloud Vision AI auto-fills your 12-digit UTR/i)).toBeInTheDocument();
 
     // Click Option B (Manual UTR)
     fireEvent.click(utrTab);

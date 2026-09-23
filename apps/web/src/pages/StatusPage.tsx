@@ -278,19 +278,40 @@ export const StatusPage: React.FC = () => {
                 </div>
               )}
 
-              {order.paymentStatus === PaymentStatuses.PAYMENT_SUBMITTED && (
+              {(order.paymentStatus === PaymentStatuses.PAYMENT_SUBMITTED ||
+                order.paymentStatus === PaymentStatuses.VERIFYING ||
+                order.paymentStatus === PaymentStatuses.REVIEW_REQUIRED) && (
                 <div className="p-4 sm:p-5 rounded-2xl bg-blue-50 border border-blue-200 flex items-start space-x-3 text-blue-900 text-sm">
                   <Clock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-bold">Payment Under Verification</p>
+                    <p className="font-bold">Payment is being verified</p>
                     <p className="text-xs sm:text-sm text-blue-800 mt-1">
-                      We have received your payment reference. Our volunteer finance desk is
-                      reconciling the credit with our SBI bank statement. Once verified (usually
-                      within 2-6 hours),{' '}
                       {isDonation
-                        ? 'your donation will be acknowledged.'
-                        : 'your digital ticket pass will be confirmed!'}
+                        ? 'We have received your payment reference and are verifying it.'
+                        : 'We have received your payment reference and are verifying it. Your ticket pass will be confirmed shortly.'}
                     </p>
+                  </div>
+                </div>
+              )}
+
+              {order.paymentStatus === PaymentStatuses.REJECTED && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-rose-50 border border-rose-200 flex items-start space-x-3 text-rose-900 text-sm">
+                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="space-y-2 flex-grow">
+                    <p className="font-bold">Payment Verification Rejected</p>
+                    <p className="text-xs sm:text-sm text-rose-800">
+                      The payment reference submitted could not be reconciled. Please resubmit your payment proof or contact our organizing team for assistance.
+                    </p>
+                    <div className="pt-1">
+                      <Link
+                        to={`/pay?token=${encodeURIComponent(order.statusToken)}`}
+                        className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-xs shadow hover:bg-rose-700 transition"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span>Resubmit Payment Proof</span>
+                        <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               )}

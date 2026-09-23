@@ -21,25 +21,43 @@ interface CachedAnalysis {
   result?: ReceiptOcrResult;
 }
 
-export function isSupportedReceiptImage(buffer: Buffer, _contentType?: string): boolean {
+export function isSupportedReceiptImage(buffer: Buffer, contentType?: string): boolean {
   if (buffer.length < 4) return false;
-  // PNG: 89 50 4E 47 0D 0A 1A 0A
-  const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  if (buffer.length >= 24 && buffer.subarray(0, pngSignature.length).equals(pngSignature)) {
-    return true;
+
+  const isPng = () => {
+    const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    return buffer.length >= 24 && buffer.subarray(0, pngSignature.length).equals(pngSignature);
+  };
+
+  const isJpeg = () => {
+    return (
+      buffer.length >= 4 &&
+      buffer[0] === 0xff &&
+      buffer[1] === 0xd8 &&
+      buffer[2] === 0xff &&
+      buffer[buffer.length - 2] === 0xff &&
+      buffer[buffer.length - 1] === 0xd9
+    );
+  };
+
+  const isWebp = () => {
+    return (
+      buffer.length >= 12 &&
+      buffer.toString('ascii', 0, 4) === 'RIFF' &&
+      buffer.toString('ascii', 8, 12) === 'WEBP'
+    );
+  };
+
+  const normalized = (contentType || '').toLowerCase().trim();
+  if (normalized === 'image/png') return isPng();
+  if (normalized === 'image/jpeg' || normalized === 'image/jpg') return isJpeg();
+  if (normalized === 'image/webp') return isWebp();
+
+  // If generic stream or unspecified, accept if any valid signature matches
+  if (!normalized || normalized === 'application/octet-stream') {
+    return isPng() || isJpeg() || isWebp();
   }
-  // JPEG: FF D8 FF
-  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-    return true;
-  }
-  // WebP: RIFF....WEBP
-  if (
-    buffer.length >= 12 &&
-    buffer.toString('ascii', 0, 4) === 'RIFF' &&
-    buffer.toString('ascii', 8, 12) === 'WEBP'
-  ) {
-    return true;
-  }
+
   return false;
 }
 

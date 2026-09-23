@@ -829,7 +829,7 @@ export const PaymentPage: React.FC = () => {
 
               <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-500 flex items-center space-x-2">
                 <Clock className="w-4 h-4 text-slate-400 shrink-0" />
-                <span>Verification usually takes 2–6 hours via our volunteer finance desk.</span>
+                <span>Payment is verified promptly upon submission.</span>
               </div>
             </div>
           </div>
