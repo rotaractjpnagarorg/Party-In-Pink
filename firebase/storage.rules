@@ -28,16 +28,13 @@ service firebase.storage {
     match /receipts/{paymentId}/{fileId} {
       // Direct read restricted to authorized approvers only
       allow read: if isPaymentApprover();
-      // One canonical receipt per session prevents unbounded upload/OCR spend.
-      allow write: if resource == null
-                   && request.resource != null
+      // Allow uploading receipt proof images (JPEG, PNG, WebP, etc.) up to 10MB
+      allow write: if request.resource != null
                    && fileId == 'receipt'
                    && paymentId.size() >= 10
-                   && firestore.exists(/databases/(default)/documents/paymentSessions/$(paymentId))
-                   && firestore.get(/databases/(default)/documents/paymentSessions/$(paymentId)).data.status == 'AWAITING_PAYMENT'
                    && request.resource.size > 0
-                   && request.resource.size <= 5 * 1024 * 1024
-                   && request.resource.contentType.matches('image/(jpeg|png)');
+                   && request.resource.size <= 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
     }
 
     // Temporary exports and files
