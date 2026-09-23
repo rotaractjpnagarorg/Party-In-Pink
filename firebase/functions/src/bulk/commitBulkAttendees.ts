@@ -124,14 +124,6 @@ export const commitBulkAttendees = onCall(
       });
     }
 
-    const normalizedEmails = validatedAttendees.map((attendee) => attendee.email.toLowerCase());
-    if (new Set(normalizedEmails).size !== normalizedEmails.length) {
-      throw new HttpsError(
-        'invalid-argument',
-        'Each bulk attendee must have a unique email address.'
-      );
-    }
-
     const totalCount = validatedAttendees.length;
     const unitPricePaise = order.unitPricePaise || getBulkPassPricePaise(order.organisationType);
     const totalAmountPaise = totalCount * unitPricePaise;
