@@ -14,7 +14,7 @@ This runbook defines the pre-launch checklist, deployment steps, daily operation
 | **Storage**           | Storage rules deployed             | Run `firebase deploy --only storage` (receipt isolation)                                                                        |   [ ]    |
 | **Cloud Functions**   | Functions 2nd Gen deployed         | Run `firebase deploy --only functions` in `asia-south1`                                                                         |   [ ]    |
 | **Netlify Frontend**  | Production SPA build deployed      | Netlify publish directory set to `apps/web/dist`                                                                                |   [ ]    |
-| **Banking / PiP Pay** | SBI VPA & Bank details configured  | Complete ₹1 test UPI payment to `racjpn2425@axl`                                                                                |   [ ]    |
+| **Banking / PiP Pay** | SBI VPA & Bank details configured  | Complete ₹1 test UPI payment to `racjpn2425@ybl`                                                                                |   [ ]    |
 | **Slack App**         | Slack interactive webhook active   | Approver bot installed; test message posted to approval channel                                                                 |   [ ]    |
 | **KonfHub**           | Capture API credentials configured | Test event created; capture ticket test successful                                                                              |   [ ]    |
 | **Brevo**             | Transactional email configured     | Sender domain verified; test confirmation email received                                                                        |   [ ]    |

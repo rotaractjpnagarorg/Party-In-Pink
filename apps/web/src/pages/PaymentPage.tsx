@@ -18,6 +18,8 @@ import {
   Sparkles,
   HelpCircle,
   X,
+  Download,
+  Smartphone,
 } from 'lucide-react';
 import { useEvent } from '../context/EventContext.js';
 import { formatINR } from '@pip/shared';
@@ -68,6 +70,70 @@ export const PaymentPage: React.FC = () => {
   const [ocrMessage, setOcrMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [selectedHandle, setSelectedHandle] = useState<'ybl' | 'ibl' | 'axl'>('ybl');
+
+  const defaultVpa = session?.paymentDisplayConfig?.upiVpa || event.paymentDisplayConfig?.upiVpa || 'racjpn2425@ybl';
+  const prefix = defaultVpa.replace(/@(ybl|ibl|axl)$/i, '');
+  const activeVpa = `${prefix}@${selectedHandle}`;
+
+  const activeUpiUri = React.useMemo(() => {
+    if (!session) return '';
+    const payeeName = encodeURIComponent(session.paymentDisplayConfig?.payeeName || event.paymentDisplayConfig.payeeName);
+    const amount = (session.amountPaise / 100).toFixed(2);
+    const ref = encodeURIComponent(session.merchantReference);
+    return `upi://pay?pa=${activeVpa}&pn=${payeeName}&am=${amount}&cu=INR&tn=${ref}&tr=${session.merchantReference}`;
+  }, [session, activeVpa, event.paymentDisplayConfig.payeeName]);
+
+  const getAppIntentUrl = (app: 'gpay' | 'phonepe' | 'paytm' | 'generic') => {
+    if (!activeUpiUri) return '';
+    const queryString = activeUpiUri.replace(/^upi:\/\/pay\??/, '');
+    const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+
+    if (isAndroid) {
+      switch (app) {
+        case 'gpay':
+          return `intent://pay?${queryString}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+        case 'phonepe':
+          return `intent://pay?${queryString}#Intent;scheme=upi;package=com.phonepe.app;end`;
+        case 'paytm':
+          return `intent://pay?${queryString}#Intent;scheme=upi;package=net.one97.paytm;end`;
+        default:
+          return activeUpiUri;
+      }
+    }
+
+    // iOS / Desktop URL schemes
+    switch (app) {
+      case 'gpay':
+        return `gpay://upi/pay?${queryString}`;
+      case 'phonepe':
+        return `phonepe://pay?${queryString}`;
+      case 'paytm':
+        return `paytmmp://pay?${queryString}`;
+      default:
+        return activeUpiUri;
+    }
+  };
+
+  const handleDownloadQR = () => {
+    const svg = document.getElementById('pip-qr-svg');
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx?.drawImage(img, 0, 0);
+      const pngFile = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.download = `PiP5-Payment-QR-${session?.merchantReference || 'code'}.png`;
+      downloadLink.href = pngFile;
+      downloadLink.click();
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+  };
 
   // Initialize or fetch payment session
   useEffect(() => {
@@ -381,7 +447,8 @@ export const PaymentPage: React.FC = () => {
                   <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 inline-block mx-auto shadow-inner">
                     {session?.upiUri ? (
                       <QRCodeSVG
-                        value={session.upiUri}
+                        id="pip-qr-svg"
+                        value={activeUpiUri || session.upiUri}
                         size={220}
                         level="H"
                         includeMargin={true}
@@ -395,31 +462,129 @@ export const PaymentPage: React.FC = () => {
                     <p className="text-xs text-slate-500 font-mono mt-3">
                       Scan with GPay / PhonePe / Paytm / BHIM
                     </p>
+
+                    <button
+                      type="button"
+                      onClick={handleDownloadQR}
+                      className="mt-3 inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition shadow-sm"
+                    >
+                      <Download className="w-3.5 h-3.5 text-pip-600" />
+                      <span>Download QR to Photos</span>
+                    </button>
                   </div>
 
-                  {/* Mobile UPI Intent Button */}
-                  <div>
+                  {/* Mobile UPI App Chooser */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-left">
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Tap App to Pay on Mobile
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-medium">Direct App Redirect</span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {/* Google Pay */}
+                      <a
+                        href={getAppIntentUrl('gpay')}
+                        className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white border-2 border-slate-200 hover:border-blue-500 hover:shadow-md transition text-slate-800 space-y-1.5 group active:scale-95"
+                      >
+                        <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-black text-xs group-hover:scale-105 transition border border-blue-100">
+                          GPay
+                        </div>
+                        <span className="text-xs font-bold text-slate-900">Google Pay</span>
+                      </a>
+
+                      {/* PhonePe */}
+                      <a
+                        href={getAppIntentUrl('phonepe')}
+                        className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white border-2 border-slate-200 hover:border-purple-500 hover:shadow-md transition text-slate-800 space-y-1.5 group active:scale-95"
+                      >
+                        <div className="w-9 h-9 rounded-full bg-purple-50 flex items-center justify-center text-purple-700 font-black text-sm group-hover:scale-105 transition border border-purple-100">
+                          पे
+                        </div>
+                        <span className="text-xs font-bold text-slate-900">PhonePe</span>
+                      </a>
+
+                      {/* Paytm */}
+                      <a
+                        href={getAppIntentUrl('paytm')}
+                        className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white border-2 border-slate-200 hover:border-sky-500 hover:shadow-md transition text-slate-800 space-y-1.5 group active:scale-95"
+                      >
+                        <div className="w-9 h-9 rounded-full bg-sky-50 flex items-center justify-center text-sky-600 font-black text-[11px] group-hover:scale-105 transition border border-sky-100">
+                          Paytm
+                        </div>
+                        <span className="text-xs font-bold text-slate-900">Paytm</span>
+                      </a>
+                    </div>
+
+                    {/* Generic / All UPI Apps */}
                     <a
-                      href={session?.upiUri}
-                      className="w-full flex items-center justify-center space-x-2 py-3.5 px-6 rounded-xl bg-gradient-to-r from-pip-600 to-pink-500 text-white font-bold text-sm shadow hover:from-pip-700 hover:to-pink-600 transition"
+                      href={getAppIntentUrl('generic')}
+                      className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-gradient-to-r from-pip-600 to-pink-500 text-white font-bold text-xs shadow hover:from-pip-700 hover:to-pink-600 transition"
                     >
-                      <span>Pay via Any UPI App</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <Smartphone className="w-4 h-4" />
+                      <span>Other UPI Apps (BHIM, CRED, Navi, YONO)</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </a>
+                  </div>
+
+                  {/* Provider Handle Selector */}
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-left space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <span className="text-xs font-bold text-slate-700">UPI Provider Handle:</span>
+                      <div className="inline-flex rounded-lg bg-slate-200 p-0.5 text-[11px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedHandle('ybl')}
+                          className={`px-2.5 py-1 rounded-md transition ${
+                            selectedHandle === 'ybl'
+                              ? 'bg-white text-pip-700 shadow-sm'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          @ybl (Yes Bank)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedHandle('ibl')}
+                          className={`px-2.5 py-1 rounded-md transition ${
+                            selectedHandle === 'ibl'
+                              ? 'bg-white text-pip-700 shadow-sm'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          @ibl (ICICI)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedHandle('axl')}
+                          className={`px-2.5 py-1 rounded-md transition ${
+                            selectedHandle === 'axl'
+                              ? 'bg-white text-pip-700 shadow-sm'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          @axl (Axis)
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-tight">
+                      Default is <strong>@ybl</strong>. If your bank (like SBI) gives a limit error on web redirect, switch to <strong>@ibl</strong> or copy the UPI ID below to pay directly from your UPI app.
+                    </p>
                   </div>
 
                   {/* UPI VPA Copy Bar */}
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-left">
                     <div>
                       <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
-                        Official UPI ID
+                        Official UPI ID ({selectedHandle.toUpperCase()})
                       </div>
                       <div className="font-mono text-sm font-bold text-slate-900">
-                        {paymentConfig.upiVpa}
+                        {activeVpa}
                       </div>
                     </div>
                     <button
-                      onClick={() => copyToClipboard(paymentConfig.upiVpa, 'vpa')}
+                      onClick={() => copyToClipboard(activeVpa, 'vpa')}
                       className="p-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition"
                     >
                       {copiedField === 'vpa' ? (

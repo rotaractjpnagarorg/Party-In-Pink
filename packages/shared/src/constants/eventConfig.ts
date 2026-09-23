@@ -20,7 +20,7 @@ export const DEFAULT_PIP5_CONFIG: EventConfig = {
     confirmedCount: 0,
   },
   paymentDisplayConfig: {
-    upiVpa: 'racjpn2425@axl',
+    upiVpa: 'racjpn2425@ybl',
     payeeName: 'Samarth Viswanath',
     bankName: 'State Bank of India',
     accountNumber: '40745246360',
