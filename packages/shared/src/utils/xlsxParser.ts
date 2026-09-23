@@ -187,14 +187,9 @@ export async function parseBulkRegistrationXlsx(
     }
     if (seenEmails.has(result.data.email)) {
       duplicateEmails.push(result.data.email);
-      errors.push({
-        rowNumber,
-        field: 'email',
-        message: `Duplicate email address "${result.data.email}" found within the file. Each participant must have a unique email for ticket dispatch.`,
-      });
-      return;
+    } else {
+      seenEmails.add(result.data.email);
     }
-    seenEmails.add(result.data.email);
     attendees.push(result.data);
   });
 

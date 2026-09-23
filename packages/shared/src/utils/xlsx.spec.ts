@@ -41,10 +41,10 @@ describe('Phase 4: Bulk XLSX Engine & Sanitization', () => {
     expect(sanitizeCellString('Normal Name')).toBe('Normal Name');
   });
 
-  it('detects duplicate emails within the upload', async () => {
+  it('allows duplicate emails and phone numbers within the upload', async () => {
     const rows = [
       ['Attendee One', 'duplicate@example.com', '9876543210'],
-      ['Attendee Two', 'duplicate@example.com', '9876543211'],
+      ['Attendee Two', 'duplicate@example.com', '9876543210'],
       ['Attendee Three', 'three@example.com', '9876543212'],
       ['Attendee Four', 'four@example.com', '9876543213'],
       ['Attendee Five', 'five@example.com', '9876543214'],
@@ -54,7 +54,8 @@ describe('Phase 4: Bulk XLSX Engine & Sanitization', () => {
       'Mobile Number': mobile,
     }));
     const result = await parseBulkRegistrationXlsx(await workbookBuffer(rows));
-    expect(result.valid).toBe(false);
+    expect(result.valid).toBe(true);
+    expect(result.validAttendeesCount).toBe(5);
     expect(result.duplicateEmails).toContain('duplicate@example.com');
   });
 
