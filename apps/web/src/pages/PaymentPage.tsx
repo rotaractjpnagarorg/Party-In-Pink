@@ -84,34 +84,43 @@ export const PaymentPage: React.FC = () => {
     return `upi://pay?pa=${activeVpa}&pn=${payeeName}&am=${amount}&cu=INR&tn=${ref}&tr=${session.merchantReference}`;
   }, [session, activeVpa, event.paymentDisplayConfig.payeeName]);
 
+  const appIntentQueryString = React.useMemo(() => {
+    if (!session) return '';
+    const payeeName = encodeURIComponent(
+      session.paymentDisplayConfig?.payeeName || event.paymentDisplayConfig.payeeName
+    );
+    // Stripping am, cu, tn, tr from web deep links allows GPay and PhonePe
+    // to open cleanly as peer transfers without triggering merchant order security blocks
+    return `pa=${activeVpa}&pn=${payeeName}`;
+  }, [session, activeVpa, event.paymentDisplayConfig.payeeName]);
+
   const getAppIntentUrl = (app: 'gpay' | 'phonepe' | 'paytm' | 'generic') => {
-    if (!activeUpiUri) return '';
-    const queryString = activeUpiUri.replace(/^upi:\/\/pay\??/, '');
+    if (!appIntentQueryString) return '';
     const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
 
     if (isAndroid) {
       switch (app) {
         case 'gpay':
-          return `intent://pay?${queryString}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+          return `intent://pay?${appIntentQueryString}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
         case 'phonepe':
-          return `intent://pay?${queryString}#Intent;scheme=upi;package=com.phonepe.app;end`;
+          return `intent://pay?${appIntentQueryString}#Intent;scheme=upi;package=com.phonepe.app;end`;
         case 'paytm':
-          return `intent://pay?${queryString}#Intent;scheme=upi;package=net.one97.paytm;end`;
+          return `intent://pay?${appIntentQueryString}#Intent;scheme=upi;package=net.one97.paytm;end`;
         default:
-          return activeUpiUri;
+          return `intent://pay?${appIntentQueryString}#Intent;scheme=upi;end`;
       }
     }
 
     // iOS / Desktop URL schemes
     switch (app) {
       case 'gpay':
-        return `gpay://upi/pay?${queryString}`;
+        return `gpay://upi/pay?${appIntentQueryString}`;
       case 'phonepe':
-        return `phonepe://pay?${queryString}`;
+        return `phonepe://pay?${appIntentQueryString}`;
       case 'paytm':
-        return `paytmmp://pay?${queryString}`;
+        return `paytmmp://pay?${appIntentQueryString}`;
       default:
-        return activeUpiUri;
+        return `upi://pay?${appIntentQueryString}`;
     }
   };
 
@@ -479,7 +488,41 @@ export const PaymentPage: React.FC = () => {
                       <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                         Tap App to Pay on Mobile
                       </span>
-                      <span className="text-[11px] text-slate-500 font-medium">Direct App Redirect</span>
+                      <span className="text-[11px] text-slate-500 font-medium">Direct App Transfer</span>
+                    </div>
+
+                    {/* Amount reminder with 1-tap copy for seamless entry in GPay / PhonePe */}
+                    <div className="p-3 bg-amber-50/90 border border-amber-200 rounded-2xl flex items-center justify-between text-left">
+                      <div>
+                        <span className="text-[11px] text-amber-800 font-semibold block">
+                          Amount to enter in app:
+                        </span>
+                        <span className="font-mono text-base font-extrabold text-amber-950">
+                          {formatINR(session?.amountPaise || 0)}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          copyToClipboard(
+                            ((session?.amountPaise || 0) / 100).toFixed(2),
+                            'amount'
+                          )
+                        }
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs font-bold hover:bg-amber-100/50 transition shadow-sm active:scale-95"
+                      >
+                        {copiedField === 'amount' ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-emerald-700">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-amber-700" />
+                            <span>Copy Amount</span>
+                          </>
+                        )}
+                      </button>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2.5">
