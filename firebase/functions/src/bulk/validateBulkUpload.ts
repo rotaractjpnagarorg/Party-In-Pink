@@ -11,7 +11,7 @@ export const validateBulkUpload = onCall(
   {
     region: 'asia-south1',
     maxInstances: 10,
-    enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== 'true',
+    enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
   },
   async (request): Promise<ParseBulkXlsxResult> => {
     const data = request.data as ValidateBulkUploadRequest;
