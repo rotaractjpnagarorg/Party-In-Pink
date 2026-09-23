@@ -98,8 +98,8 @@ export const AdminTicketsPage: React.FC = () => {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-white tracking-tight">Ticket Jobs</h1>
-        <p className="text-sm text-slate-400 mt-1">KonfHub fulfilment status & retry controls</p>
+        <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Ticket Jobs</h1>
+        <p className="text-xs sm:text-sm text-slate-400 mt-1">KonfHub fulfilment status & retry controls</p>
       </div>
 
       {retryResult && (

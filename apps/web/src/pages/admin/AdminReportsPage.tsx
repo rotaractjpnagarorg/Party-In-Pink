@@ -144,8 +144,8 @@ export const AdminReportsPage: React.FC = () => {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-white tracking-tight">Reports</h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Reports</h1>
+        <p className="text-xs sm:text-sm text-slate-400 mt-1">
           Generate CSV exports for registrations, payments, and donations
         </p>
       </div>

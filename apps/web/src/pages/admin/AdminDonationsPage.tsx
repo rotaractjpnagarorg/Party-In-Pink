@@ -143,21 +143,21 @@ export const AdminDonationsPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">Donations</h1>
-          <p className="text-sm text-slate-400 mt-1">{donations.length} total contributions</p>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Donations</h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">{donations.length} total contributions</p>
         </div>
         <button
           onClick={exportCSV}
-          className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-300 hover:text-white hover:border-slate-600 transition-all"
+          className="self-start sm:self-auto flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-300 hover:text-white hover:border-slate-600 transition-all"
         >
           <Download className="w-4 h-4" />
           <span>Export CSV</span>
         </button>
       </div>
 
-      <div className="relative max-w-md mb-5">
+      <div className="relative w-full sm:max-w-md mb-5">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
         <input
           type="text"

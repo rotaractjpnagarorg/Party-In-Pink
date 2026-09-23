@@ -162,14 +162,14 @@ export const AdminOrdersPage: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">Orders</h1>
-          <p className="text-sm text-slate-400 mt-1">{orders.length} total orders</p>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Orders</h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">{orders.length} total orders</p>
         </div>
         <button
           onClick={exportCSV}
-          className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-300 hover:text-white hover:border-slate-600 transition-all"
+          className="self-start sm:self-auto flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-300 hover:text-white hover:border-slate-600 transition-all"
         >
           <Download className="w-4 h-4" />
           <span>Export CSV</span>
@@ -177,8 +177,8 @@ export const AdminOrdersPage: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+        <div className="relative w-full sm:flex-1 sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
             type="text"
@@ -188,27 +188,29 @@ export const AdminOrdersPage: React.FC = () => {
             className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-pip-500 focus:border-transparent outline-none"
           />
         </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm text-slate-300 outline-none focus:ring-2 focus:ring-pip-500"
-        >
-          <option value="ALL">All Statuses</option>
-          <option value="CREATED">Created</option>
-          <option value="PAYMENT_SUBMITTED">Payment Submitted</option>
-          <option value="VERIFIED">Verified</option>
-          <option value="REJECTED">Rejected</option>
-          <option value="REVIEW_REQUIRED">Review</option>
-        </select>
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          className="px-3 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm text-slate-300 outline-none focus:ring-2 focus:ring-pip-500"
-        >
-          <option value="ALL">All Types</option>
-          <option value="SINGLE">Single</option>
-          <option value="BULK">Bulk</option>
-        </select>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="flex-1 sm:flex-none px-3 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm text-slate-300 outline-none focus:ring-2 focus:ring-pip-500"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="CREATED">Created</option>
+            <option value="PAYMENT_SUBMITTED">Payment Submitted</option>
+            <option value="VERIFIED">Verified</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="REVIEW_REQUIRED">Review</option>
+          </select>
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="flex-1 sm:flex-none px-3 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm text-slate-300 outline-none focus:ring-2 focus:ring-pip-500"
+          >
+            <option value="ALL">All Types</option>
+            <option value="SINGLE">Single</option>
+            <option value="BULK">Bulk</option>
+          </select>
+        </div>
       </div>
 
       {/* Table */}

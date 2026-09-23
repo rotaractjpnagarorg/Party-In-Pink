@@ -67,15 +67,15 @@ interface MetricCardProps {
 }
 
 const MetricCard: React.FC<MetricCardProps> = ({ label, value, icon: Icon, color, subtext }) => (
-  <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 hover:border-slate-600/50 transition-all">
-    <div className="flex items-start justify-between mb-3">
-      <div className={`p-2.5 rounded-xl ${color}`}>
-        <Icon className="w-5 h-5" />
+  <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-4 sm:p-5 hover:border-slate-600/50 transition-all min-w-0">
+    <div className="flex items-start justify-between mb-2 sm:mb-3">
+      <div className={`p-2 sm:p-2.5 rounded-xl ${color}`}>
+        <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
       </div>
     </div>
-    <p className="text-2xl font-extrabold text-white tracking-tight">{value}</p>
-    <p className="text-sm text-slate-400 mt-1">{label}</p>
-    {subtext && <p className="text-xs text-slate-500 mt-0.5">{subtext}</p>}
+    <p className="text-xl sm:text-2xl font-extrabold text-white tracking-tight truncate">{value}</p>
+    <p className="text-xs sm:text-sm text-slate-400 mt-1 line-clamp-1">{label}</p>
+    {subtext && <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 truncate">{subtext}</p>}
   </div>
 );
 

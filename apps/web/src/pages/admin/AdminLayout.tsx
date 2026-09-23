@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -11,6 +11,8 @@ import {
   LogOut,
   Shield,
   ChevronRight,
+  Menu,
+  X,
 } from 'lucide-react';
 import { useAdminAuth } from '../../context/AdminAuthContext.js';
 
@@ -71,6 +73,11 @@ export const AdminLayout: React.FC = () => {
   const { isAuthenticated, loading, profile, logout } = useAdminAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   if (loading) {
     return (
@@ -95,11 +102,58 @@ export const AdminLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 fixed h-full z-40">
-        {/* Brand */}
-        <div className="p-5 border-b border-slate-800">
+    <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row text-slate-100">
+      {/* Mobile Top Header */}
+      <header className="md:hidden sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="p-2 -ml-1 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            aria-label="Open sidebar menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="flex items-center space-x-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-pip-600 to-pink-400 flex items-center justify-center shadow-sm">
+              <Shield className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-white text-sm">PiP 5.0 Admin</span>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+            {profile?.role?.replace(/_/g, ' ')}
+          </span>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile backdrop */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 md:hidden transition-opacity"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar Drawer */}
+      <aside
+        className={`w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out md:translate-x-0 ${
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {/* Brand & Mobile Close Button */}
+        <div className="p-5 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-pip-600 to-pink-400 flex items-center justify-center shadow-md shadow-pip-500/20">
               <Shield className="w-5 h-5 text-white" />
@@ -109,6 +163,14 @@ export const AdminLayout: React.FC = () => {
               <p className="text-[11px] text-slate-500">Control Centre</p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(false)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 md:hidden transition"
+            aria-label="Close sidebar menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation */}
@@ -120,6 +182,7 @@ export const AdminLayout: React.FC = () => {
                 key={link.path}
                 to={link.path}
                 end={link.end}
+                onClick={() => setMobileMenuOpen(false)}
                 className={({ isActive }) =>
                   `flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group ${
                     isActive
@@ -138,7 +201,7 @@ export const AdminLayout: React.FC = () => {
         {/* Profile footer */}
         <div className="p-4 border-t border-slate-800">
           <div className="flex items-center justify-between">
-            <div className="min-w-0">
+            <div className="min-w-0 pr-2">
               <p className="text-sm font-medium text-white truncate">{profile?.displayName}</p>
               <p className="text-[11px] text-slate-500 truncate">
                 {profile?.role?.replace(/_/g, ' ')}
@@ -146,7 +209,7 @@ export const AdminLayout: React.FC = () => {
             </div>
             <button
               onClick={handleLogout}
-              className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+              className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
               title="Sign out"
             >
               <LogOut className="w-4 h-4" />
@@ -156,8 +219,8 @@ export const AdminLayout: React.FC = () => {
       </aside>
 
       {/* Main content area */}
-      <main className="flex-1 ml-64 min-h-screen">
-        <div className="p-6 lg:p-8 max-w-[1400px]">
+      <main className="flex-1 min-w-0 md:ml-64 min-h-screen">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] w-full min-w-0">
           <Outlet />
         </div>
       </main>

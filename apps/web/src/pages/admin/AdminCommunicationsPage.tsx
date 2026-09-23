@@ -115,11 +115,11 @@ export const AdminCommunicationsPage: React.FC = () => {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-white tracking-tight">Communications</h1>
-        <p className="text-sm text-slate-400 mt-1">Email job history & delivery status</p>
+        <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Communications</h1>
+        <p className="text-xs sm:text-sm text-slate-400 mt-1">Email job history & delivery status</p>
       </div>
 
-      <div className="relative max-w-md mb-5">
+      <div className="relative w-full sm:max-w-md mb-5">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
         <input
           type="text"

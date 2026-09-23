@@ -144,8 +144,8 @@ export const AdminPaymentsPage: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+        <div className="relative w-full sm:flex-1 sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
             type="text"
@@ -158,7 +158,7 @@ export const AdminPaymentsPage: React.FC = () => {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm text-slate-300 outline-none focus:ring-2 focus:ring-pip-500"
+          className="w-full sm:w-auto px-3 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm text-slate-300 outline-none focus:ring-2 focus:ring-pip-500"
         >
           <option value="ALL">All Statuses</option>
           <option value="PAYMENT_SUBMITTED">Pending</option>
