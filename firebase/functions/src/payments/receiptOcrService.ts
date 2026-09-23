@@ -16,7 +16,27 @@ interface CachedAnalysis {
   generation: string;
   claimId?: string;
   leaseExpiresAt?: string;
+  attemptCount?: number;
+  nextAttemptAt?: string;
   result?: ReceiptOcrResult;
+}
+
+export function isSupportedReceiptImage(buffer: Buffer, contentType: string): boolean {
+  if (contentType === 'image/png') {
+    const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    return buffer.length >= 24 && buffer.subarray(0, pngSignature.length).equals(pngSignature);
+  }
+  if (contentType === 'image/jpeg') {
+    return (
+      buffer.length >= 4 &&
+      buffer[0] === 0xff &&
+      buffer[1] === 0xd8 &&
+      buffer[2] === 0xff &&
+      buffer[buffer.length - 2] === 0xff &&
+      buffer[buffer.length - 1] === 0xd9
+    );
+  }
+  return false;
 }
 
 export async function analyzeReceiptOnce(
@@ -62,12 +82,30 @@ export async function analyzeReceiptOnce(
     ) {
       throw new HttpsError('resource-exhausted', 'Receipt analysis is already in progress.');
     }
+    const sameGeneration =
+      analysis?.storagePath === storagePath && analysis.generation === generation;
+    const attemptCount = sameGeneration ? analysis.attemptCount || 0 : 0;
+    if (analysis?.state === 'FAILED' && sameGeneration) {
+      if (attemptCount >= 3) {
+        throw new HttpsError(
+          'failed-precondition',
+          'Receipt analysis failed repeatedly. Submit the payment for manual review.'
+        );
+      }
+      if (analysis.nextAttemptAt && Date.parse(analysis.nextAttemptAt) > now.getTime()) {
+        throw new HttpsError(
+          'resource-exhausted',
+          'Receipt analysis retry is temporarily delayed.'
+        );
+      }
+    }
     transaction.update(sessionRef, {
       ocrAnalysis: {
         state: 'PROCESSING',
         storagePath,
         generation,
         claimId,
+        attemptCount: attemptCount + 1,
         leaseExpiresAt: new Date(now.getTime() + 2 * 60 * 1000).toISOString(),
         updatedAt: now.toISOString(),
       },
@@ -78,6 +116,12 @@ export async function analyzeReceiptOnce(
 
   try {
     const [fileBuffer] = await file.download();
+    if (!isSupportedReceiptImage(fileBuffer, metadata.contentType || '')) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Receipt contents do not match a supported PNG or JPEG image.'
+      );
+    }
     const vision = await import('@google-cloud/vision');
     const visionClient = new vision.ImageAnnotatorClient();
     const [visionResult] = await visionClient.textDetection({ image: { content: fileBuffer } });
@@ -97,6 +141,7 @@ export async function analyzeReceiptOnce(
           state: 'COMPLETED',
           storagePath,
           generation,
+          attemptCount: current.data()?.ocrAnalysis?.attemptCount || 1,
           result,
           completedAt: new Date().toISOString(),
         },
@@ -112,6 +157,11 @@ export async function analyzeReceiptOnce(
           state: 'FAILED',
           storagePath,
           generation,
+          attemptCount: current.data()?.ocrAnalysis?.attemptCount || 1,
+          nextAttemptAt: new Date(
+            Date.now() +
+              30_000 * 2 ** Math.max(0, (current.data()?.ocrAnalysis?.attemptCount || 1) - 1)
+          ).toISOString(),
           failedAt: new Date().toISOString(),
         },
       });

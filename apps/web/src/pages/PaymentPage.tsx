@@ -110,8 +110,7 @@ export const PaymentPage: React.FC = () => {
     setError(null);
     let uploaded = false;
     try {
-      const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const path = `receipts/${session.sessionId}/${Date.now()}_${cleanName}`;
+      const path = `receipts/${session.sessionId}/receipt`;
       await uploadBytes(ref(storage, path), file);
       uploaded = true;
       setReceiptStoragePath(path);
@@ -165,8 +164,7 @@ export const PaymentPage: React.FC = () => {
 
       // 1. Upload receipt to Firebase Storage if selected
       if (receiptFile && !storagePath) {
-        const cleanName = receiptFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const path = `receipts/${session.sessionId}/${Date.now()}_${cleanName}`;
+        const path = `receipts/${session.sessionId}/receipt`;
         const storageRef = ref(storage, path);
         await uploadBytes(storageRef, receiptFile);
         storagePath = path;

@@ -50,11 +50,7 @@ export const RotaryFamilyAffiliations = [
 ] as const;
 
 export function getBulkMinParticipants(organisationType?: string | null): number {
-  if (
-    organisationType === AffiliationTypes.ROTARACT_UNIVERSITY ||
-    organisationType === AffiliationTypes.ROTARACT_COMMUNITY ||
-    organisationType === AffiliationTypes.ROTARACT_CLUB
-  ) {
+  if (organisationType === AffiliationTypes.ROTARACT_UNIVERSITY) {
     return 15;
   }
   return 10;
@@ -76,8 +72,12 @@ export const DONATION_TIERS = [
     name: 'Wellwisher',
     amount: 5000,
     amountPaise: 500000,
-    complimentaryPasses: 0,
-    benefits: ['Major Wellwisher Acknowledgement', 'Direct support for patient cancer care'],
+    complimentaryPasses: 1,
+    benefits: [
+      '1 Complimentary Event Pass',
+      'Major Wellwisher Acknowledgement',
+      'Direct support for patient cancer care',
+    ],
   },
   {
     tier: 'SILVER',
@@ -126,6 +126,7 @@ export function getDonationComplimentaryPasses(amountPaise: number): number {
   if (amountPaise >= 2000000) return 7;
   if (amountPaise >= 1500000) return 5;
   if (amountPaise >= 1000000) return 2;
+  if (amountPaise >= 500000) return 1;
   return 0;
 }
 

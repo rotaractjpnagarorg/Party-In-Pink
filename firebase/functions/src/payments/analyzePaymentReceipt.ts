@@ -15,7 +15,7 @@ export const analyzePaymentReceipt = onCall(
   {
     region: 'asia-south1',
     maxInstances: 10,
-    enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
+    enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== 'true',
   },
   async (request) => {
     const parsed = requestSchema.safeParse(request.data);

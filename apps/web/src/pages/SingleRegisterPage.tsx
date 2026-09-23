@@ -361,9 +361,7 @@ export const SingleRegisterPage: React.FC = () => {
                     <option value={AffiliationTypes.NGO_ASSOCIATION}>
                       NGO / Social Association
                     </option>
-                    <option value={AffiliationTypes.OTHER_ORGANISATION}>
-                      College / Educational Institution
-                    </option>
+                      <option value={AffiliationTypes.OTHER_ORGANISATION}>Other Organisation</option>
                   </select>
                 </div>
 
@@ -375,12 +373,11 @@ export const SingleRegisterPage: React.FC = () => {
                         htmlFor="clubName"
                         className="block text-xs font-bold text-slate-700 mb-1"
                       >
-                        Club Name *
+                        Club Name (Optional)
                       </label>
                       <input
                         id="clubName"
                         type="text"
-                        required={isRotaryFamily}
                         value={clubName}
                         onChange={(e) => setClubName(e.target.value)}
                         placeholder="e.g. Rotaract Bangalore South"

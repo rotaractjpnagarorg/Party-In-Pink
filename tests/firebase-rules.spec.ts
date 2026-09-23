@@ -39,6 +39,28 @@ beforeEach(async () => {
       active: false,
       role: 'SUPER_ADMIN',
     });
+    await setDoc(doc(context.firestore(), 'admins/ticket-admin'), {
+      active: true,
+      role: 'TICKET_ADMIN',
+    });
+    await setDoc(doc(context.firestore(), 'admins/registration-admin'), {
+      active: true,
+      role: 'REGISTRATION_ADMIN',
+    });
+    await setDoc(doc(context.firestore(), 'admins/finance-view'), {
+      active: true,
+      role: 'FINANCE_VIEW',
+    });
+    await setDoc(doc(context.firestore(), 'donations/donation-1'), { pan: 'ABCDE1234F' });
+    await setDoc(doc(context.firestore(), 'emailJobs/order-email'), {
+      entityType: 'ORDER',
+      recipientEmail: 'guest@example.com',
+    });
+    await setDoc(doc(context.firestore(), 'emailJobs/donation-email'), {
+      entityType: 'DONATION',
+      recipientEmail: 'donor@example.com',
+    });
+    await setDoc(doc(context.firestore(), 'ticketJobs/ticket-1'), { status: 'QUEUED' });
   });
 });
 
@@ -65,12 +87,42 @@ describe('Firestore deny-by-default rules', () => {
       .firestore();
     await assertFails(getDoc(doc(inactiveDb, 'orders/order-1')));
   });
+
+  it('enforces the collection role matrix for a ticket-only admin', async () => {
+    const ticketDb = testEnv
+      .authenticatedContext('ticket-admin', { role: 'TICKET_ADMIN' })
+      .firestore();
+    await assertSucceeds(getDoc(doc(ticketDb, 'ticketJobs/ticket-1')));
+    await assertFails(getDoc(doc(ticketDb, 'orders/order-1')));
+    await assertFails(getDoc(doc(ticketDb, 'donations/donation-1')));
+    await assertFails(getDoc(doc(ticketDb, 'emailJobs/order-email')));
+  });
+
+  it('keeps registration and donation communication metadata in their role domains', async () => {
+    const registrationDb = testEnv
+      .authenticatedContext('registration-admin', { role: 'REGISTRATION_ADMIN' })
+      .firestore();
+    await assertSucceeds(getDoc(doc(registrationDb, 'emailJobs/order-email')));
+    await assertFails(getDoc(doc(registrationDb, 'emailJobs/donation-email')));
+
+    const financeDb = testEnv
+      .authenticatedContext('finance-view', { role: 'FINANCE_VIEW' })
+      .firestore();
+    await assertSucceeds(getDoc(doc(financeDb, 'emailJobs/donation-email')));
+    await assertFails(getDoc(doc(financeDb, 'emailJobs/order-email')));
+  });
+
+  it('denies direct event and admin-profile mutations even to super admins', async () => {
+    const adminDb = testEnv.authenticatedContext('admin-1', { role: 'SUPER_ADMIN' }).firestore();
+    await assertFails(setDoc(doc(adminDb, 'events/PIP5'), { status: 'REGISTRATION_CLOSED' }));
+    await assertFails(setDoc(doc(adminDb, 'admins/new-admin'), { active: true, role: 'SUPER_ADMIN' }));
+  });
 });
 
 describe('private receipt storage rules', () => {
   it('allows bounded image creation but denies overwrite and anonymous read', async () => {
     const publicStorage = testEnv.unauthenticatedContext().storage();
-    const receipt = ref(publicStorage, 'receipts/payment-session-123/receipt.png');
+    const receipt = ref(publicStorage, 'receipts/payment-session-123/receipt');
     await assertSucceeds(
       uploadBytes(receipt, new Uint8Array([1, 2, 3]), { contentType: 'image/png' })
     );
@@ -78,7 +130,14 @@ describe('private receipt storage rules', () => {
     await assertFails(getBytes(receipt));
     await assertFails(
       uploadBytes(
-        ref(publicStorage, 'receipts/nonexistent-session/receipt.png'),
+        ref(publicStorage, 'receipts/nonexistent-session/receipt'),
+        new Uint8Array([1, 2, 3]),
+        { contentType: 'image/png' }
+      )
+    );
+    await assertFails(
+      uploadBytes(
+        ref(publicStorage, 'receipts/payment-session-123/second-receipt'),
         new Uint8Array([1, 2, 3]),
         { contentType: 'image/png' }
       )
@@ -89,11 +148,11 @@ describe('private receipt storage rules', () => {
     const approverStorage = testEnv
       .authenticatedContext('approver-1', { role: 'PAYMENT_APPROVER' })
       .storage();
-    const receipt = ref(approverStorage, 'receipts/payment-session-123/receipt.png');
+    const receipt = ref(approverStorage, 'receipts/payment-session-123/receipt');
     await assertSucceeds(getBytes(receipt));
     const inactiveStorage = testEnv
       .authenticatedContext('inactive-admin', { role: 'SUPER_ADMIN' })
       .storage();
-    await assertFails(getBytes(ref(inactiveStorage, 'receipts/payment-session-123/receipt.png')));
+    await assertFails(getBytes(ref(inactiveStorage, 'receipts/payment-session-123/receipt')));
   });
 });

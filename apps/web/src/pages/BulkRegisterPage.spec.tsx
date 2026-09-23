@@ -34,7 +34,7 @@ describe('BulkRegisterPage Component', () => {
       screen.getByRole('option', { name: /Rotaract Club - University Based \(Min\. 15 passes • ₹219\/pass\)/i })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('option', { name: /Rotaract Club - Community Based \(Min\. 15 passes • ₹219\/pass\)/i })
+      screen.getByRole('option', { name: /Rotaract Club - Community Based \(Min\. 10 passes • ₹219\/pass\)/i })
     ).toBeInTheDocument();
     expect(
       screen.getByRole('option', { name: /Rotary Club \(Min\. 10 passes • ₹599\/pass\)/i })

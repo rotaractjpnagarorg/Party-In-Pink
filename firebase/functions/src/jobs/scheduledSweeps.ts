@@ -103,6 +103,18 @@ export const expireStalePaymentSessions = onSchedule(
         });
       }
       logger.info(`Expired ${expiredOrders.size} abandoned registration reservations.`);
+
+      const expiredRateLimits = await db
+        .collection('publicRateLimits')
+        .where('expiresAt', '<=', nowIso)
+        .limit(400)
+        .get();
+      if (!expiredRateLimits.empty) {
+        const cleanupBatch = db.batch();
+        expiredRateLimits.docs.forEach((snapshot) => cleanupBatch.delete(snapshot.ref));
+        await cleanupBatch.commit();
+      }
+      logger.info(`Deleted ${expiredRateLimits.size} expired public rate-limit buckets.`);
     } catch (err) {
       logger.error('Error during expireStalePaymentSessions sweep', err);
     }
@@ -134,6 +146,7 @@ export const dailySummaryJob = onSchedule(
         .collection('orders')
         .where('paymentStatus', '==', 'VERIFIED')
         .where('updatedAt', '>=', startIso)
+        .limit(5000)
         .get();
 
       let totalPaise = 0;
@@ -149,6 +162,7 @@ export const dailySummaryJob = onSchedule(
         .collection('donations')
         .where('paymentStatus', '==', 'VERIFIED')
         .where('updatedAt', '>=', startIso)
+        .limit(5000)
         .get();
 
       let totalDonationPaise = 0;
@@ -161,6 +175,7 @@ export const dailySummaryJob = onSchedule(
       const pendingApprovalsSnap = await db
         .collection('paymentSessions')
         .where('status', 'in', ['PAYMENT_SUBMITTED', 'VERIFYING'])
+        .limit(5000)
         .get();
 
       const summary = {

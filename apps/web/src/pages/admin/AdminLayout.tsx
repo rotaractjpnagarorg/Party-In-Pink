@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, Outlet, Navigate, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -57,7 +57,7 @@ const sidebarLinks = [
     name: 'Communications',
     path: '/admin/communications',
     icon: Mail,
-    roles: ['SUPER_ADMIN', 'REGISTRATION_ADMIN', 'VIEW_ONLY'],
+    roles: ['SUPER_ADMIN', 'PAYMENT_APPROVER', 'REGISTRATION_ADMIN', 'FINANCE_VIEW', 'VIEW_ONLY'],
   },
   {
     name: 'Reports',
@@ -70,6 +70,7 @@ const sidebarLinks = [
 export const AdminLayout: React.FC = () => {
   const { isAuthenticated, loading, profile, logout } = useAdminAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -81,6 +82,11 @@ export const AdminLayout: React.FC = () => {
 
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
+  }
+
+  const currentRoute = sidebarLinks.find((link) => link.path === location.pathname);
+  if (!currentRoute || !currentRoute.roles.includes(profile?.role || '')) {
+    return <Navigate to="/admin" replace />;
   }
 
   const handleLogout = async () => {

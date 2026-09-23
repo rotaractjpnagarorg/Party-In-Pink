@@ -170,7 +170,7 @@ describe('Zod Validation Schemas', () => {
       expect(passResult.success).toBe(true);
     });
 
-    it('enforces minimum 15 passes for Rotaract Community Based', () => {
+    it('enforces minimum 10 passes for Rotaract Community Based', () => {
       const payload = {
         organisationType: AffiliationTypes.ROTARACT_COMMUNITY,
         organisationName: 'Rotaract Club of Bangalore South',
@@ -181,12 +181,12 @@ describe('Zod Validation Schemas', () => {
           mobileNumber: '9876543210',
           whatsappSameAsMobile: true,
         },
-        participantCount: 14, // below 15
+        participantCount: 9, // below 10
       };
       const failResult = bulkOrderCreateSchema.safeParse(payload);
       expect(failResult.success).toBe(false);
 
-      const passResult = bulkOrderCreateSchema.safeParse({ ...payload, participantCount: 15 });
+      const passResult = bulkOrderCreateSchema.safeParse({ ...payload, participantCount: 10 });
       expect(passResult.success).toBe(true);
     });
   });

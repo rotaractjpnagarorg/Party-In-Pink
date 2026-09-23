@@ -383,7 +383,7 @@ export const BulkRegisterPage: React.FC = () => {
                         Rotaract Club - University Based (Min. 15 passes • ₹219/pass)
                       </option>
                       <option value={AffiliationTypes.ROTARACT_COMMUNITY}>
-                        Rotaract Club - Community Based (Min. 15 passes • ₹219/pass)
+                        Rotaract Club - Community Based (Min. 10 passes • ₹219/pass)
                       </option>
                       <option value={AffiliationTypes.ROTARY_CLUB}>
                         Rotary Club (Min. 10 passes • ₹599/pass)

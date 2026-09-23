@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { db } from '../config/firebase.js';
 import { generateReference, generateStatusToken } from '../utils/reference.js';
+import { enforcePublicRateLimit, getClientAddress } from '../middleware/publicRateLimit.js';
 import {
   singleRegistrationSchema,
   REFERENCE_PREFIXES,
@@ -15,7 +16,7 @@ export const createSingleOrder = onCall(
   {
     region: 'asia-south1',
     maxInstances: 10,
-    enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
+    enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== 'true',
   },
   async (request) => {
     // 1. Validate payload against shared domain schema
@@ -28,6 +29,12 @@ export const createSingleOrder = onCall(
       );
     }
     const data = parseResult.data;
+    await enforcePublicRateLimit(
+      'create-single-order',
+      getClientAddress(request.rawRequest),
+      5,
+      60 * 60 * 1000
+    );
 
     // 2. Fetch active event configuration
     const eventRef = db.collection('events').doc(DEFAULT_EVENT_CODE);
@@ -60,14 +67,25 @@ export const createSingleOrder = onCall(
       }
 
       // registeredCount includes both confirmed seats and live payment reservations.
-      const currentRegistered = eventData.capacity?.registeredCount || 0;
-      const totalCapacity = eventData.capacity?.total || 3000;
+      const currentRegistered = Number(eventData.capacity?.registeredCount);
+      const totalCapacity = Number(eventData.capacity?.total);
+      if (
+        !Number.isInteger(currentRegistered) ||
+        currentRegistered < 0 ||
+        !Number.isInteger(totalCapacity) ||
+        totalCapacity < 1
+      ) {
+        throw new HttpsError('failed-precondition', 'Event capacity is not configured correctly.');
+      }
       if (currentRegistered + 1 > totalCapacity) {
         throw new HttpsError('resource-exhausted', 'Event has reached maximum capacity.');
       }
 
       // Authoritative server-side price calculation (SEC-P0-002)
-      calculatedAmountPaise = eventData.pricesPaise?.singlePass || 23900;
+      calculatedAmountPaise = Number(eventData.pricesPaise?.singlePass);
+      if (!Number.isInteger(calculatedAmountPaise) || calculatedAmountPaise <= 0) {
+        throw new HttpsError('failed-precondition', 'Single-pass pricing is not configured correctly.');
+      }
 
       // Construct Order document
       const newOrder: Order = {

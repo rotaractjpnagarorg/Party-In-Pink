@@ -48,14 +48,14 @@ async function main() {
       marketingUpdates: false,
     },
   });
-  assert.equal(single.amountPaise, 19900);
+  assert.equal(single.amountPaise, DEFAULT_PIP5_CONFIG.pricesPaise.singlePass);
   assert.equal(single.statusToken.length, 32);
 
   const singlePayment = await callable<any>('createPaymentSession', {
     statusToken: single.statusToken,
     method: 'UPI',
   });
-  assert.equal(singlePayment.amountPaise, 19900);
+  assert.equal(singlePayment.amountPaise, DEFAULT_PIP5_CONFIG.pricesPaise.singlePass);
   await callable('submitPaymentEvidence', {
     statusToken: single.statusToken,
     sessionId: singlePayment.sessionId,
@@ -134,7 +134,7 @@ async function main() {
     statusToken: bulk.statusToken,
     method: 'RTGS',
   });
-  assert.equal(bulkPayment.amountPaise, 5 * 14900);
+  assert.equal(bulkPayment.amountPaise, 5 * DEFAULT_PIP5_CONFIG.pricesPaise.bulkPass);
 
   await new Promise((resolve) => setTimeout(resolve, 2_000));
   const [event, ticketJobs, emailJobs] = await Promise.all([

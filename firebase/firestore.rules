@@ -45,19 +45,27 @@ service cloud.firestore {
       return hasRole('FINANCE_VIEW') || isSuperAdmin();
     }
 
-    // 1. Events collection: Public read for event details, write only for Super Admin
+    function isRegistrationAdmin() {
+      return hasRole('REGISTRATION_ADMIN') || isSuperAdmin();
+    }
+
+    function isViewOnly() {
+      return hasRole('VIEW_ONLY') || isSuperAdmin();
+    }
+
+    // 1. Events collection: public read; privileged writes use audited Cloud Functions only.
     match /events/{eventCode} {
       allow read: if true;
-      allow write: if isSuperAdmin();
+      allow write: if false;
     }
 
     // 2. Orders collection: Privileged mutations through Cloud Functions only
     match /orders/{orderId} {
-      allow read: if isAnyAdmin();
+      allow read: if isRegistrationAdmin() || isFinanceView() || isViewOnly();
       allow write: if false;
 
       match /attendees/{attendeeId} {
-        allow read: if isAnyAdmin();
+        allow read: if isRegistrationAdmin() || isFinanceView() || isViewOnly();
         allow write: if false;
       }
     }
@@ -76,7 +84,7 @@ service cloud.firestore {
 
     // 5. Donations collection: Read by admin, direct write denied
     match /donations/{donationId} {
-      allow read: if isAnyAdmin();
+      allow read: if isPaymentApprover() || isFinanceView() || isViewOnly();
       allow write: if false;
     }
 
@@ -93,13 +101,21 @@ service cloud.firestore {
     }
 
     match /emailJobs/{jobId} {
-      allow read: if isAnyAdmin();
+      allow read: if isSuperAdmin()
+        || isViewOnly()
+        || (hasRole('REGISTRATION_ADMIN') && resource.data.entityType == 'ORDER')
+        || ((hasRole('PAYMENT_APPROVER') || hasRole('FINANCE_VIEW'))
+          && resource.data.entityType == 'DONATION');
       allow write: if false;
     }
 
     // 8. Communications history
     match /communications/{commId} {
-      allow read: if isAnyAdmin();
+      allow read: if isSuperAdmin()
+        || isViewOnly()
+        || (hasRole('REGISTRATION_ADMIN') && resource.data.entityType == 'ORDER')
+        || ((hasRole('PAYMENT_APPROVER') || hasRole('FINANCE_VIEW'))
+          && resource.data.entityType == 'DONATION');
       allow write: if false;
     }
 
@@ -112,7 +128,7 @@ service cloud.firestore {
     // 10. Admins Profile Metadata
     match /admins/{uid} {
       allow read: if isAuthenticated() && (request.auth.uid == uid || isSuperAdmin());
-      allow write: if isSuperAdmin();
+      allow write: if false;
     }
 
     // Default catch-all: Deny read and write

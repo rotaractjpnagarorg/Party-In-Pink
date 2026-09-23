@@ -1,5 +1,7 @@
 import { PUBLIC_WEB_URL, SLACK_WEBHOOK_URL } from '../../config/secrets.js';
 
+const SLACK_REQUEST_TIMEOUT_MS = 8_000;
+
 export interface SlackPaymentNotificationInput {
   paymentId: string;
   merchantReference: string;
@@ -16,6 +18,13 @@ export interface SlackPaymentNotificationInput {
   statusToken?: string | null;
 }
 
+export function escapeSlackMrkdwn(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 /**
  * Builds Slack Block Kit interactive payment approval card.
  */
@@ -26,6 +35,11 @@ export function buildPaymentApprovalBlocks(input: SlackPaymentNotificationInput)
     ? `${baseUrl}/status?token=${input.statusToken}`
     : `${baseUrl}/status`;
   const isDonation = input.entityType === 'DONATION';
+  const buyerName = escapeSlackMrkdwn(input.buyerName);
+  const buyerEmail = escapeSlackMrkdwn(input.buyerEmail);
+  const method = escapeSlackMrkdwn(input.method);
+  const source = escapeSlackMrkdwn(input.source);
+  const storagePath = escapeSlackMrkdwn(input.storagePath);
 
   return [
     {
@@ -49,7 +63,7 @@ export function buildPaymentApprovalBlocks(input: SlackPaymentNotificationInput)
         },
         {
           type: 'mrkdwn',
-          text: `*Payer / Registrant:*\n${input.buyerName}\n\`${input.buyerEmail}\``,
+          text: `*Payer / Registrant:*\n${buyerName}\n\`${buyerEmail}\``,
         },
         {
           type: 'mrkdwn',
@@ -61,7 +75,7 @@ export function buildPaymentApprovalBlocks(input: SlackPaymentNotificationInput)
         },
         {
           type: 'mrkdwn',
-          text: `*Method & Source:*\n${input.method} (${input.source}${input.ocrConfidence ? ` • OCR: ${input.ocrConfidence}` : ''})`,
+          text: `*Method & Source:*\n${method} (${source}${input.ocrConfidence ? ` • OCR: ${escapeSlackMrkdwn(input.ocrConfidence)}` : ''})`,
         },
       ],
     },
@@ -72,7 +86,7 @@ export function buildPaymentApprovalBlocks(input: SlackPaymentNotificationInput)
             elements: [
               {
                 type: 'mrkdwn',
-                text: `📁 *Receipt Evidence:* \`${input.storagePath}\``,
+                text: `📁 *Receipt Evidence:* \`${storagePath}\``,
               },
             ],
           },
@@ -137,6 +151,7 @@ export async function notifySlackPaymentSubmitted(
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(SLACK_REQUEST_TIMEOUT_MS),
       body: JSON.stringify({
         text: `PiP 5.0 Payment: ${input.entityReference} (${input.buyerName} - ₹${input.amountPaise / 100})`,
         blocks,
@@ -177,6 +192,7 @@ export async function notifySlackTicketIssued(
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(SLACK_REQUEST_TIMEOUT_MS),
       body: JSON.stringify({ text }),
     });
     return response.ok;
@@ -197,6 +213,7 @@ export async function notifySlackTicketFailed(
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(SLACK_REQUEST_TIMEOUT_MS),
       body: JSON.stringify({ text }),
     });
     return response.ok;

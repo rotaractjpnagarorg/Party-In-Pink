@@ -95,8 +95,8 @@ const PRESET_AMOUNTS = [
   {
     amount: 5000,
     tier: 'Wellwisher',
-    label: 'Wellwisher Certificate & Recognition',
-    passes: 0,
+    label: '1 Complimentary Pass • Wellwisher Certificate & Recognition',
+    passes: 1,
   },
   {
     amount: 2500,
@@ -394,10 +394,14 @@ export const DonatePage: React.FC = () => {
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
                   Special Tier
                 </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-pink-100 text-pink-800 border border-pink-200">
+                  <Gift className="w-3.5 h-3.5 text-pip-600" />
+                  <span>1 Complimentary Pass</span>
+                </span>
               </div>
               <p className="mt-1 text-sm text-slate-600 leading-relaxed">
-                Contact the team for its recognition details and available deliverables. Support
-                breast cancer care directly with official wellwisher acknowledgement.
+                Includes 1 complimentary event pass and official wellwisher acknowledgement. Support
+                breast cancer care directly with official wellwisher recognition.
               </p>
             </div>
             <div className="mt-4 flex items-center gap-2.5 sm:mt-0 shrink-0">
@@ -529,7 +533,7 @@ export const DonatePage: React.FC = () => {
                     <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-pip-600 shrink-0" />
-                        <span>Sponsorship tiers of ₹10,000 and above include complimentary event passes (Silver: 2, Gold: 5, Platinum: 7 passes).</span>
+                        <span>Sponsorship tiers of ₹5,000 and above include complimentary event passes (Wellwisher: 1, Silver: 2, Gold: 5, Platinum: 7 passes).</span>
                       </span>
                     </div>
                   )}

@@ -8,6 +8,12 @@ describe('payment approval workflow on Firestore emulator', () => {
   beforeEach(async () => {
     const collections = await db.listCollections();
     await Promise.all(collections.map((collection) => db.recursiveDelete(collection)));
+    await db
+      .collection('events')
+      .doc('PIP5')
+      .set({
+        capacity: { total: 1000, registeredCount: 0, confirmedCount: 0 },
+      });
   });
 
   it('atomically verifies an order and queues one ticket job', async () => {
@@ -57,7 +63,7 @@ describe('payment approval workflow on Firestore emulator', () => {
     expect(event.data()?.capacity.confirmedCount).toBe(1);
   });
 
-  it('verifies donations without ever creating a ticket job', async () => {
+  it('verifies standard donations without creating a ticket job', async () => {
     await db
       .collection('donations')
       .doc('donation-1')
@@ -95,6 +101,88 @@ describe('payment approval workflow on Firestore emulator', () => {
     expect(donation.data()?.donationStatus).toBe('VERIFIED');
     expect(ticketJobs.empty).toBe(true);
     expect(emailJobs.size).toBe(1);
+  });
+
+  it('verifies wellwisher donations and queues 1 complimentary ticket job (Wellwisher Tier: ₹5,000 = 1 pass)', async () => {
+    await db
+      .collection('donations')
+      .doc('donation-wellwisher')
+      .set({
+        id: 'donation-wellwisher',
+        publicReference: 'PIP5-D-WELLWISHER1',
+        amountPaise: 500000,
+        paymentStatus: 'PAYMENT_SUBMITTED',
+        donationStatus: 'PAYMENT_SUBMITTED',
+        donor: { fullName: 'Wellwisher Sponsor', email: 'wellwisher@example.com' },
+        paymentSessionId: 'payment-wellwisher',
+        createdAt: now,
+        updatedAt: now,
+      });
+    await db.collection('paymentSessions').doc('payment-wellwisher').set({
+      id: 'payment-wellwisher',
+      entityType: 'DONATION',
+      entityId: 'donation-wellwisher',
+      amountPaise: 500000, // ₹5,000 = 1 pass
+      status: 'PAYMENT_SUBMITTED',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await processPaymentApproval({
+      paymentId: 'payment-wellwisher',
+      decision: 'APPROVE',
+      actor: 'test-admin',
+      source: 'ADMIN_DASHBOARD',
+    });
+    const [donation, ticketJobs, event] = await Promise.all([
+      db.collection('donations').doc('donation-wellwisher').get(),
+      db.collection('ticketJobs').get(),
+      db.collection('events').doc('PIP5').get(),
+    ]);
+    expect(donation.data()?.donationStatus).toBe('VERIFIED');
+    expect(ticketJobs.empty).toBe(false);
+    expect(event.data()?.capacity.confirmedCount).toBe(1);
+  });
+
+  it('verifies sponsorship donations and queues complimentary ticket jobs (Silver Tier: 2 passes)', async () => {
+    await db
+      .collection('donations')
+      .doc('donation-silver')
+      .set({
+        id: 'donation-silver',
+        publicReference: 'PIP5-D-SILVER1',
+        amountPaise: 1000000,
+        paymentStatus: 'PAYMENT_SUBMITTED',
+        donationStatus: 'PAYMENT_SUBMITTED',
+        donor: { fullName: 'Silver Sponsor', email: 'silver@example.com' },
+        paymentSessionId: 'payment-silver',
+        createdAt: now,
+        updatedAt: now,
+      });
+    await db.collection('paymentSessions').doc('payment-silver').set({
+      id: 'payment-silver',
+      entityType: 'DONATION',
+      entityId: 'donation-silver',
+      amountPaise: 1000000, // ₹10,000 = 2 passes
+      status: 'PAYMENT_SUBMITTED',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await processPaymentApproval({
+      paymentId: 'payment-silver',
+      decision: 'APPROVE',
+      actor: 'test-admin',
+      source: 'ADMIN_DASHBOARD',
+    });
+    const [donation, ticketJobs, event] = await Promise.all([
+      db.collection('donations').doc('donation-silver').get(),
+      db.collection('ticketJobs').get(),
+      db.collection('events').doc('PIP5').get(),
+    ]);
+    expect(donation.data()?.donationStatus).toBe('VERIFIED');
+    expect(ticketJobs.empty).toBe(false);
+    expect(event.data()?.capacity.confirmedCount).toBe(2);
   });
 
   it('rejects approval of a superseded payment session', async () => {

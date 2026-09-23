@@ -32,5 +32,8 @@ describe('Slack interaction security', () => {
     expect(isAuthorizedSlackActor('T123', 'U456', 'T123', 'U111,U456')).toBe(true);
     expect(isAuthorizedSlackActor('T999', 'U456', 'T123', 'U111,U456')).toBe(false);
     expect(isAuthorizedSlackActor('T123', 'U999', 'T123', 'U111,U456')).toBe(false);
+    expect(isAuthorizedSlackActor('T123', 'U456', 'T123', undefined)).toBe(false);
+    expect(isAuthorizedSlackActor('T123', 'U456', 'T123', '*')).toBe(false);
+    expect(isAuthorizedSlackActor('T123', 'U456', undefined, 'U456')).toBe(false);
   });
 });

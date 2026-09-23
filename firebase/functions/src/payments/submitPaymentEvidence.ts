@@ -81,7 +81,7 @@ export function validatePaymentEvidenceBinding(input: PaymentEvidenceBindingInpu
     const fileName = storagePath.slice(expectedPrefix.length);
     if (
       !storagePath.startsWith(expectedPrefix) ||
-      !fileName ||
+      fileName !== 'receipt' ||
       fileName.includes('/') ||
       !/^[A-Za-z0-9._-]+$/.test(fileName)
     ) {
@@ -93,17 +93,30 @@ export function validatePaymentEvidenceBinding(input: PaymentEvidenceBindingInpu
   }
 }
 
+export function isDuplicatePaymentReference(
+  existingPaymentId: unknown,
+  currentPaymentId: string
+): boolean {
+  return typeof existingPaymentId === 'string' && existingPaymentId !== currentPaymentId;
+}
+
 export const submitPaymentEvidence = onCall(
   {
     region: 'asia-south1',
     maxInstances: 10,
-    enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
+    enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== 'true',
     secrets: [SLACK_WEBHOOK_URL],
   },
   async (request) => {
     const data = request.data as SubmitPaymentEvidenceRequest;
     if (!data?.statusToken || !data?.sessionId) {
       throw new HttpsError('invalid-argument', 'statusToken and sessionId are required');
+    }
+    if (
+      data.source !== undefined &&
+      !['RECEIPT_UPLOAD', 'MANUAL_ENTRY', 'PASTED_TEXT'].includes(data.source)
+    ) {
+      throw new HttpsError('invalid-argument', 'Unsupported payment evidence source');
     }
 
     // 1. Validate Order or Donation exists for status token
@@ -232,7 +245,7 @@ export const submitPaymentEvidence = onCall(
     // 4. Enforce UTR uniqueness lock in Firestore transaction (PAY-P0-002)
     const nowIso = new Date().toISOString();
 
-    await db.runTransaction(async (transaction) => {
+    const submissionStatus = await db.runTransaction(async (transaction) => {
       const entityRef = db
         .collection(entityType === 'ORDER' ? 'orders' : 'donations')
         .doc(entityId);
@@ -262,33 +275,36 @@ export const submitPaymentEvidence = onCall(
         storagePath: data.storagePath,
       });
 
+      let isDuplicateUtr = false;
       if (normalizedUtr && normalizedUtr.length >= 6) {
         const utrRef = db.collection('paymentReferences').doc(normalizedUtr);
         const utrDoc = await transaction.get(utrRef);
 
         if (utrDoc.exists) {
           const existingLock = utrDoc.data();
-          if (existingLock?.paymentId !== session.id) {
-            throw new HttpsError(
-              'already-exists',
-              `This bank transaction reference (UTR: ${normalizedUtr}) has already been recorded for another payment. Please verify your reference or contact help desk.`
-            );
-          }
+          isDuplicateUtr = isDuplicatePaymentReference(existingLock?.paymentId, session.id);
         }
 
-        // Lock UTR
-        transaction.set(utrRef, {
-          paymentId: session.id,
-          entityId,
-          entityReference,
-          normalizedUtr,
-          createdAt: nowIso,
-        });
+        // A reference already used by another payment is preserved as evidence
+        // and routed to review. It must never replace the original lock.
+        if (!isDuplicateUtr) {
+          transaction.set(utrRef, {
+            paymentId: session.id,
+            entityId,
+            entityReference,
+            normalizedUtr,
+            createdAt: nowIso,
+          });
+        }
       }
+
+      const nextPaymentStatus = isDuplicateUtr
+        ? PaymentStatuses.REVIEW_REQUIRED
+        : PaymentStatuses.PAYMENT_SUBMITTED;
 
       // Update payment session to PAYMENT_SUBMITTED
       transaction.update(sessionRef, {
-        status: PaymentStatuses.PAYMENT_SUBMITTED,
+        status: nextPaymentStatus,
         normalizedUtr: normalizedUtr || null,
         evidence: {
           storagePath: data.storagePath || null,
@@ -304,13 +320,15 @@ export const submitPaymentEvidence = onCall(
       // Update Order or Donation to PAYMENT_SUBMITTED
       if (entityType === 'ORDER') {
         transaction.update(entityRef, {
-          paymentStatus: PaymentStatuses.PAYMENT_SUBMITTED,
-          orderStatus: OrderStatuses.PAYMENT_SUBMITTED,
+          paymentStatus: nextPaymentStatus,
+          orderStatus: isDuplicateUtr
+            ? OrderStatuses.REVIEW_REQUIRED
+            : OrderStatuses.PAYMENT_SUBMITTED,
           updatedAt: nowIso,
         });
       } else {
         transaction.update(entityRef, {
-          paymentStatus: PaymentStatuses.PAYMENT_SUBMITTED,
+          paymentStatus: nextPaymentStatus,
           donationStatus: DonationStatuses.PAYMENT_SUBMITTED,
           updatedAt: nowIso,
         });
@@ -321,13 +339,15 @@ export const submitPaymentEvidence = onCall(
       transaction.set(auditRef, {
         id: auditRef.id,
         actor: `PUBLIC_USER:${buyerEmail}`,
-        action: 'SUBMIT_PAYMENT_EVIDENCE',
+        action: isDuplicateUtr
+          ? 'SUBMIT_DUPLICATE_PAYMENT_REFERENCE_FOR_REVIEW'
+          : 'SUBMIT_PAYMENT_EVIDENCE',
         entityType: 'PAYMENT',
         entityId: session.id,
         correlationId: entityReference,
         afterState: {
           publicReference: entityReference,
-          paymentStatus: PaymentStatuses.PAYMENT_SUBMITTED,
+          paymentStatus: nextPaymentStatus,
           normalizedUtr: normalizedUtr || null,
           ocrConfidence,
         },
@@ -350,6 +370,8 @@ export const submitPaymentEvidence = onCall(
         createdAt: nowIso,
         updatedAt: nowIso,
       });
+
+      return nextPaymentStatus;
     });
 
     // Notify Slack channel asynchronously
@@ -375,8 +397,11 @@ export const submitPaymentEvidence = onCall(
 
     return {
       success: true,
-      paymentStatus: PaymentStatuses.PAYMENT_SUBMITTED,
-      orderStatus: OrderStatuses.PAYMENT_SUBMITTED,
+      paymentStatus: submissionStatus,
+      orderStatus:
+        submissionStatus === PaymentStatuses.REVIEW_REQUIRED
+          ? OrderStatuses.REVIEW_REQUIRED
+          : OrderStatuses.PAYMENT_SUBMITTED,
       orderReference: entityReference,
       statusToken: data.statusToken,
       normalizedUtr: normalizedUtr || null,

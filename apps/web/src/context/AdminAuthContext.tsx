@@ -54,13 +54,13 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
           if (adminSnap.exists()) {
             const data = adminSnap.data();
-            const effectiveRole = claimRole || (typeof data.role === 'string' ? data.role : null);
-            if (effectiveRole && data.active !== false) {
+            const profileRole = typeof data.role === 'string' ? data.role : null;
+            if (claimRole && profileRole === claimRole && data.active === true) {
               setProfile({
                 uid: firebaseUser.uid,
                 displayName: data.displayName || firebaseUser.displayName || 'Admin',
                 email: firebaseUser.email || '',
-                role: effectiveRole,
+                role: claimRole,
                 active: true,
               });
               setError(null);
@@ -68,15 +68,6 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               setProfile(null);
               setError('This account does not have an active admin role.');
             }
-          } else if (claimRole) {
-            setProfile({
-              uid: firebaseUser.uid,
-              displayName: firebaseUser.displayName || 'Admin',
-              email: firebaseUser.email || '',
-              role: claimRole,
-              active: true,
-            });
-            setError(null);
           } else {
             setProfile(null);
             setError(`Account ${firebaseUser.email || ''} is not authorized as an administrator.`);

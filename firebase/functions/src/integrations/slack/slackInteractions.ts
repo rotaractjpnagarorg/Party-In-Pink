@@ -18,7 +18,9 @@ export function isAuthorizedSlackActor(
   if (actualTeamId !== targetTeam) return false;
 
   const targetApprovers = approverIdsCsv;
-  if (!targetApprovers || targetApprovers === '*') return true;
+  // Approval authority must always be explicit. Missing configuration and a
+  // wildcard are deployment errors, not permission to approve payments.
+  if (!targetApprovers || targetApprovers.trim() === '*') return false;
 
   const approverIds = new Set(
     targetApprovers

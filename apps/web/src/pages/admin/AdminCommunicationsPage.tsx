@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../services/firebase.js';
 import { Mail, RefreshCw, Search } from 'lucide-react';
+import { useAdminAuth } from '../../context/AdminAuthContext.js';
 
 interface EmailJobRow {
   id: string;
@@ -18,6 +19,7 @@ interface EmailJobRow {
 }
 
 export const AdminCommunicationsPage: React.FC = () => {
+  const { profile } = useAdminAuth();
   const [emails, setEmails] = useState<EmailJobRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,7 +27,21 @@ export const AdminCommunicationsPage: React.FC = () => {
 
   const load = async () => {
     try {
-      const q = query(collection(db, 'emailJobs'), orderBy('createdAt', 'desc'));
+      const role = profile?.role;
+      const q =
+        role === 'REGISTRATION_ADMIN'
+          ? query(
+              collection(db, 'emailJobs'),
+              where('entityType', '==', 'ORDER'),
+              orderBy('createdAt', 'desc')
+            )
+          : role === 'PAYMENT_APPROVER' || role === 'FINANCE_VIEW'
+            ? query(
+                collection(db, 'emailJobs'),
+                where('entityType', '==', 'DONATION'),
+                orderBy('createdAt', 'desc')
+              )
+            : query(collection(db, 'emailJobs'), orderBy('createdAt', 'desc'));
       const snap = await getDocs(q);
       setEmails(
         snap.docs.map((doc) => {
@@ -53,7 +69,7 @@ export const AdminCommunicationsPage: React.FC = () => {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [profile?.role]);
 
   const retryEmail = async (jobId: string) => {
     setRetrying(jobId);

@@ -19,12 +19,16 @@ export const createPaymentSession = onCall(
   {
     region: 'asia-south1',
     maxInstances: 10,
-    enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
+    enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== 'true',
   },
   async (request) => {
     const data = request.data as CreatePaymentSessionRequest;
     if (!data?.statusToken) {
       throw new HttpsError('invalid-argument', 'statusToken is required');
+    }
+    const method = data.method || 'UPI';
+    if (!['UPI', 'NEFT', 'IMPS', 'RTGS'].includes(method)) {
+      throw new HttpsError('invalid-argument', 'Unsupported payment method');
     }
 
     // 1. Locate order or donation by statusToken
@@ -166,7 +170,7 @@ export const createPaymentSession = onCall(
         entityType,
         entityId,
         entityReference,
-        method: data.method || 'UPI',
+        method,
         amountPaise,
         currency: 'INR',
         status: PaymentStatuses.AWAITING_PAYMENT,
