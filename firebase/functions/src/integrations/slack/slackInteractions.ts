@@ -100,9 +100,10 @@ export const slackInteractions = onRequest(
       return;
     }
 
+    let payload: any = null;
     try {
       // Slack sends interactive payloads as application/x-www-form-urlencoded with 'payload' parameter
-      let payload: any = req.body;
+      payload = req.body;
       if (typeof req.body === 'object' && req.body.payload) {
         payload = JSON.parse(req.body.payload);
       } else if (typeof req.body === 'string') {
@@ -162,18 +163,18 @@ export const slackInteractions = onRequest(
         notes: `Processed via Slack interaction by @${slackUser}`,
       });
 
-      // Prepare response to update Slack message in-place and remove action buttons
+      // Prepare resolution status badge
       const nowFormatted = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
       let statusBadge = '';
       if (decision === 'APPROVE') {
-        statusBadge = `✅ *PAYMENT VERIFIED & APPROVED* by @${slackUser} on ${nowFormatted}\nTicket fulfillment job queued.`;
+        statusBadge = `✅ *PAYMENT VERIFIED & APPROVED* by *@${slackUser}* on ${nowFormatted}\n🎟️ Ticket fulfillment initiated. Attendee pass generation queued.`;
       } else if (decision === 'REJECT') {
-        statusBadge = `❌ *PAYMENT REJECTED* by @${slackUser} on ${nowFormatted}\nReference released.`;
+        statusBadge = `❌ *PAYMENT REJECTED* by *@${slackUser}* on ${nowFormatted}\n⚠️ Payment reference released. Automated rejection notice emailed to buyer.`;
       } else {
-        statusBadge = `⚠️ *FLAGGED FOR REVIEW* by @${slackUser} on ${nowFormatted}`;
+        statusBadge = `⚠️ *FLAGGED FOR REVIEW* by *@${slackUser}* on ${nowFormatted}\nUnder investigation with finance desk.`;
       }
 
-      // Preserve existing sections, replace action block with resolution status
+      // Preserve existing sections, strip action buttons block entirely, and attach resolution status
       const existingBlocks = payload.message?.blocks || [];
       const updatedBlocks = existingBlocks
         .filter((b: any) => b.block_id !== 'pip_payment_actions' && b.type !== 'actions')
@@ -187,7 +188,25 @@ export const slackInteractions = onRequest(
           },
         ]);
 
-      // Respond directly to Slack to update original message
+      // 1. Asynchronously update Slack message in-place via response_url (required for incoming webhooks)
+      if (payload.response_url) {
+        try {
+          const slackResp = await fetch(payload.response_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              replace_original: true,
+              text: `Payment ${paymentId}: ${decision} by @${slackUser}`,
+              blocks: updatedBlocks,
+            }),
+          });
+          console.log(`[Slack Interactions] response_url updated (HTTP ${slackResp.status})`);
+        } catch (fetchErr) {
+          console.error('[Slack Interactions] Failed to POST to response_url:', fetchErr);
+        }
+      }
+
+      // 2. Also respond with HTTP 200 payload
       res.status(200).json({
         replace_original: true,
         text: `Payment ${paymentId}: ${decision} by @${slackUser}`,
@@ -197,6 +216,41 @@ export const slackInteractions = onRequest(
       console.error('[Slack Interactions] Error handling interaction:', err);
 
       const errorMessage = err?.message || 'Failed to process approval action.';
+      const isAlreadyResolved =
+        err?.code === 'already-exists' ||
+        err?.code === 'failed-precondition' ||
+        typeof errorMessage === 'string' && errorMessage.toLowerCase().includes('already been');
+
+      // If already resolved, strip the action buttons from Slack so no further clicks can occur
+      if (isAlreadyResolved && payload?.response_url) {
+        const existingBlocks = payload.message?.blocks || [];
+        const cleanBlocks = existingBlocks
+          .filter((b: any) => b.block_id !== 'pip_payment_actions' && b.type !== 'actions')
+          .concat([
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: `ℹ️ *Action Already Completed:*\n${errorMessage}`,
+              },
+            },
+          ]);
+
+        try {
+          await fetch(payload.response_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              replace_original: true,
+              text: errorMessage,
+              blocks: cleanBlocks,
+            }),
+          });
+        } catch (postErr) {
+          console.error('[Slack Interactions] Failed to update response_url on error:', postErr);
+        }
+      }
+
       res.status(200).json({
         response_type: 'ephemeral',
         replace_original: false,

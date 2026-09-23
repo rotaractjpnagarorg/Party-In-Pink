@@ -1,4 +1,5 @@
 import { PUBLIC_WEB_URL, SLACK_WEBHOOK_URL } from '../../config/secrets.js';
+import { storage } from '../../config/firebase.js';
 
 const SLACK_REQUEST_TIMEOUT_MS = 8_000;
 
@@ -13,6 +14,7 @@ export interface SlackPaymentNotificationInput {
   method: string;
   utr?: string | null;
   storagePath?: string | null;
+  receiptUrl?: string | null;
   source: string;
   ocrConfidence?: number | string | null;
   statusToken?: string | null;
@@ -95,13 +97,13 @@ export function buildPaymentApprovalBlocks(input: SlackPaymentNotificationInput)
     ...(input.storagePath
       ? [
           {
-            type: 'context',
-            elements: [
-              {
-                type: 'mrkdwn',
-                text: `📁 *Receipt Evidence:* \`${storagePath}\``,
-              },
-            ],
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: input.receiptUrl
+                ? `📁 *Receipt Evidence:* <${input.receiptUrl}|🔍 *View Uploaded Screenshot (Click to Open)*>`
+                : `📁 *Receipt Evidence:* \`${storagePath}\``,
+            },
           },
         ]
       : []),
@@ -119,6 +121,25 @@ export function buildPaymentApprovalBlocks(input: SlackPaymentNotificationInput)
           style: 'primary',
           action_id: 'pip_approve',
           value: input.paymentId,
+          confirm: {
+            title: {
+              type: 'plain_text',
+              text: isDonation ? 'Approve Donation?' : 'Approve & Issue Entry Pass?',
+            },
+            text: {
+              type: 'mrkdwn',
+              text: `Have you verified credit of *${amountFormatted}* on the SBI bank statement for *${buyerName}*?\nThis will immediately confirm the registration and ${isDonation ? 'send a donation acknowledgement' : 'issue digital ticket pass(es)'}.`,
+            },
+            confirm: {
+              type: 'plain_text',
+              text: 'Yes, Approve',
+            },
+            deny: {
+              type: 'plain_text',
+              text: 'Cancel',
+            },
+            style: 'primary',
+          },
         },
         {
           type: 'button',
@@ -130,6 +151,25 @@ export function buildPaymentApprovalBlocks(input: SlackPaymentNotificationInput)
           style: 'danger',
           action_id: 'pip_reject',
           value: input.paymentId,
+          confirm: {
+            title: {
+              type: 'plain_text',
+              text: 'Reject Payment Submission?',
+            },
+            text: {
+              type: 'mrkdwn',
+              text: `Are you sure you want to reject payment for *${escapeSlackMrkdwn(input.entityReference)}*?\nThis will release the reference and email a rejection notice to *${buyerEmail}*.`,
+            },
+            confirm: {
+              type: 'plain_text',
+              text: 'Yes, Reject',
+            },
+            deny: {
+              type: 'plain_text',
+              text: 'Cancel',
+            },
+            style: 'danger',
+          },
         },
         {
           type: 'button',
@@ -153,12 +193,32 @@ export async function notifySlackPaymentSubmitted(
   input: SlackPaymentNotificationInput
 ): Promise<boolean> {
   const webhookUrl = SLACK_WEBHOOK_URL.value();
-  const blocks = buildPaymentApprovalBlocks(input);
 
   if (!webhookUrl) {
     console.error('[Slack Notifier] SLACK_WEBHOOK_URL is not configured.');
     return false;
   }
+
+  // Pre-generate signed URL for receipt screenshot if storagePath is provided
+  let receiptSignedUrl = input.receiptUrl || null;
+  if (!receiptSignedUrl && input.storagePath) {
+    try {
+      const file = storage.bucket().file(input.storagePath);
+      const [exists] = await file.exists();
+      if (exists) {
+        const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days validity
+        const [url] = await file.getSignedUrl({ action: 'read', expires: expiresAt });
+        receiptSignedUrl = url;
+      }
+    } catch (signErr) {
+      console.warn('[Slack Notifier] Failed to create signed URL for receipt:', signErr);
+    }
+  }
+
+  const blocks = buildPaymentApprovalBlocks({
+    ...input,
+    receiptUrl: receiptSignedUrl,
+  });
 
   try {
     const response = await fetch(webhookUrl, {
