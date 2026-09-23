@@ -47,17 +47,31 @@ export const BulkRegisterPage: React.FC = () => {
   const [whatsappSame, setWhatsappSame] = useState(true);
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [initialCount, setInitialCount] = useState<number>(15);
+  const [countInputValue, setCountInputValue] = useState<string>('15');
 
   const handleOrgTypeChange = (newType: string) => {
     setOrgType(newType);
     const newMin = getBulkMinParticipants(newType);
     setInitialCount(newMin);
+    setCountInputValue(String(newMin));
   };
 
-  const handleCountChange = (value: number) => {
+  /** Allow free typing; only sanitize the raw string into a valid number. */
+  const handleCountInputChange = (raw: string) => {
+    setCountInputValue(raw);
+    const parsed = parseInt(raw, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      setInitialCount(Math.min(500, parsed));
+    }
+  };
+
+  /** Clamp to [minRequired, 500] when the user leaves the field. */
+  const handleCountBlur = () => {
     const minVal = getBulkMinParticipants(orgType);
-    const sanitized = isNaN(value) ? minVal : Math.max(minVal, Math.min(500, value));
-    setInitialCount(sanitized);
+    const parsed = parseInt(countInputValue, 10);
+    const clamped = isNaN(parsed) || parsed < minVal ? minVal : Math.min(500, parsed);
+    setInitialCount(clamped);
+    setCountInputValue(String(clamped));
   };
 
   // Order state after creation
@@ -459,9 +473,11 @@ export const BulkRegisterPage: React.FC = () => {
                       type="number"
                       min={minRequired}
                       max={500}
+                      step={1}
                       required
-                      value={initialCount}
-                      onChange={(e) => handleCountChange(parseInt(e.target.value, 10))}
+                      value={countInputValue}
+                      onChange={(e) => handleCountInputChange(e.target.value)}
+                      onBlur={handleCountBlur}
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-base font-bold focus:outline-none focus:ring-2 focus:ring-pip-500 font-mono"
                     />
                     <div className="mt-2.5 p-3.5 bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 rounded-2xl flex items-center justify-between text-xs">
