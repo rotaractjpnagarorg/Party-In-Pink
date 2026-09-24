@@ -94,32 +94,47 @@ export const createCashfreeOrder = onCall(
     const statusToken = entity.statusToken || session.entityId;
     const returnUrl = `https://pip.rotaractjpnagar.org/status/${encodeURIComponent(statusToken)}?cf_order_id={order_id}`;
 
-    const cfOrder = await client.createOrder({
-      order_id: cfOrderId,
-      order_amount: amountInRupees,
-      order_currency: 'INR',
-      customer_details: {
-        customer_id: `cust_${session.entityId}`.slice(0, 50),
-        customer_name: customerName.slice(0, 100),
-        customer_email: customerEmail,
-        customer_phone: customerPhone,
-      },
-      order_meta: {
-        return_url: returnUrl,
-      },
-      order_note: `Party In Pink Entry Pass (${session.merchantReference})`,
-    });
+    try {
+      const cfOrder = await client.createOrder({
+        order_id: cfOrderId,
+        order_amount: amountInRupees,
+        order_currency: 'INR',
+        customer_details: {
+          customer_id: `cust_${session.entityId}`.slice(0, 50),
+          customer_name: customerName.slice(0, 100),
+          customer_email: customerEmail,
+          customer_phone: customerPhone,
+        },
+        order_meta: {
+          return_url: returnUrl,
+        },
+        order_note: `Party In Pink Entry Pass (${session.merchantReference})`,
+      });
 
-    await sessionRef.update({
-      cashfreeOrderId: cfOrder.order_id,
-      cashfreePaymentSessionId: cfOrder.payment_session_id,
-      cashfreeOrderStatus: cfOrder.order_status,
-      updatedAt: new Date().toISOString(),
-    });
+      await sessionRef.update({
+        cashfreeOrderId: cfOrder.order_id,
+        cashfreePaymentSessionId: cfOrder.payment_session_id,
+        cashfreeOrderStatus: cfOrder.order_status,
+        updatedAt: new Date().toISOString(),
+      });
 
-    return {
-      orderId: cfOrder.order_id,
-      paymentSessionId: cfOrder.payment_session_id,
-    };
+      return {
+        orderId: cfOrder.order_id,
+        paymentSessionId: cfOrder.payment_session_id,
+      };
+    } catch (err: any) {
+      console.error('[createCashfreeOrder] Cashfree API Error:', err);
+      const rawMsg = err?.message || String(err);
+      if (rawMsg.includes('transactions are not enabled')) {
+        throw new HttpsError(
+          'failed-precondition',
+          'Cashfree Gateway Notice: Live transactions are currently being activated by Cashfree for this account. Please verify activation in your Cashfree Merchant Dashboard.'
+        );
+      }
+      throw new HttpsError(
+        'failed-precondition',
+        `Cashfree Gateway Error: ${rawMsg.replace(/^Error:\s*/, '')}`
+      );
+    }
   }
 );

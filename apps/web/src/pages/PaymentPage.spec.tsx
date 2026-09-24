@@ -1,11 +1,11 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { PaymentPage } from './PaymentPage';
 import { EventProvider } from '../context/EventContext';
 import { httpsCallable } from 'firebase/functions';
 
-// Mock Firebase functions and storage
+// Mock Firebase functions
 vi.mock('../services/firebase', () => ({
   functions: {},
   storage: {},
@@ -16,11 +16,6 @@ vi.mock('firebase/functions', () => ({
   httpsCallable: vi.fn(),
 }));
 
-vi.mock('firebase/storage', () => ({
-  ref: vi.fn(),
-  uploadBytes: vi.fn(),
-}));
-
 const mockSessionData = {
   sessionId: 'sess_123',
   entityType: 'ORDER',
@@ -29,21 +24,6 @@ const mockSessionData = {
   currency: 'INR',
   status: 'PENDING_PAYMENT',
   expiresAt: new Date(Date.now() + 3600000).toISOString(),
-  upi: {
-    pa: 'rotaract@upi',
-    pn: 'Rotaract Club',
-    am: '499.00',
-    cu: 'INR',
-    tn: 'PIP-TEST-001',
-    intentUrl: 'upi://pay?pa=rotaract@upi&pn=Rotaract&am=499.00&cu=INR&tn=PIP-TEST-001',
-  },
-  bankAccount: {
-    accountName: 'Rotaract Club of JP Nagar',
-    bankName: 'Canara Bank',
-    accountNumber: '1234567890',
-    ifscCode: 'CNRB0001234',
-    branch: 'JP Nagar Bangalore',
-  },
 };
 
 const renderWithProviders = (ui: React.ReactElement, initialEntry = '/') => {
@@ -67,7 +47,7 @@ describe('PaymentPage Component', () => {
     expect(screen.getByRole('link', { name: /Return to Status Page/i })).toBeInTheDocument();
   });
 
-  it('renders Option A / Option B proof toggle when payment session loads', async () => {
+  it('renders online gateway checkout when payment session loads', async () => {
     const mockCallable = vi.fn().mockResolvedValue({ data: mockSessionData });
     vi.mocked(httpsCallable).mockReturnValue(mockCallable as any);
 
@@ -75,34 +55,19 @@ describe('PaymentPage Component', () => {
 
     // Wait for session to load
     await waitFor(() => {
-      expect(screen.getByText(/Confirm Payment/i)).toBeInTheDocument();
+      expect(screen.getByText(/Instant Online Payment/i)).toBeInTheDocument();
     });
 
-    // Verify Option A and Option B toggle buttons exist
-    const screenshotTab = screen.getByRole('button', { name: /Upload Screenshot/i });
-    const utrTab = screen.getByRole('button', { name: /Enter 12-Digit UTR/i });
-    expect(screenshotTab).toBeInTheDocument();
-    expect(utrTab).toBeInTheDocument();
+    // Check merchant reference and amount
+    expect(screen.getByText('PIP-TEST-001')).toBeInTheDocument();
+    expect(screen.getByText(/Pay ₹499 Now/i)).toBeInTheDocument();
 
-    // Default is Option A (Screenshot)
-    expect(screen.getByText(/Tap to upload screenshot/i)).toBeInTheDocument();
-    expect(screen.getByText(/Google Cloud Vision AI auto-fills your 12-digit UTR/i)).toBeInTheDocument();
+    // Verify supported methods
+    expect(screen.getByText(/UPI Apps/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Cards/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/NetBanking/i).length).toBeGreaterThanOrEqual(1);
 
-    // Click Option B (Manual UTR)
-    fireEvent.click(utrTab);
-
-    // Verify Option B UI elements
-    expect(screen.getByLabelText(/12-Digit Bank Reference \/ UPI UTR/i)).toBeInTheDocument();
-    expect(screen.getByText(/0 \/ 12 digits/i)).toBeInTheDocument();
-    expect(screen.getByText(/Where do I find my 12-digit UTR\?/i)).toBeInTheDocument();
-
-    // Type 12 digits and check counter
-    const utrInput = screen.getByLabelText(/12-Digit Bank Reference \/ UPI UTR/i);
-    fireEvent.change(utrInput, { target: { value: '429218273849' } });
-    expect(screen.getByText(/12 \/ 12 digits/i)).toBeInTheDocument();
-
-    // Click Option A again to switch back
-    fireEvent.click(screenshotTab);
-    expect(screen.getByText(/Tap to upload screenshot/i)).toBeInTheDocument();
+    // Verify reassurance badges
+    expect(screen.getByText(/Payment is routed directly to the organizing committee for instant approval./i)).toBeInTheDocument();
   });
 });

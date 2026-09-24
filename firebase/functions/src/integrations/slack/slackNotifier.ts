@@ -141,7 +141,7 @@ export function buildPaymentApprovalBlocks(input: SlackPaymentNotificationInput)
             },
             text: {
               type: 'mrkdwn',
-              text: `Have you verified credit of *${amountFormatted}* on the SBI bank statement for *${buyerName}*?\nThis will immediately confirm the registration and ${isDonation ? 'send a donation acknowledgement' : 'issue digital ticket pass(es)'}.`,
+              text: `Have you verified payment credit of *${amountFormatted}* for *${buyerName}*?\nThis will immediately confirm the registration and ${isDonation ? 'send a donation acknowledgement' : 'issue digital ticket pass(es)'}.`,
             },
             confirm: {
               type: 'plain_text',
