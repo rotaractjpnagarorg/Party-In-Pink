@@ -9,7 +9,6 @@ import {
   type PaymentSession,
 } from '@pip/shared';
 import { SLACK_WEBHOOK_URL } from '../config/secrets.js';
-import { analyzeReceiptOnce } from './receiptOcrService.js';
 
 interface SubmitPaymentEvidenceRequest {
   statusToken: string;
@@ -195,40 +194,9 @@ export const submitPaymentEvidence = onCall(
     let ocrConfidence: number | null = null;
     let receiptVerified = false;
 
-    // 3. Optional OCR extraction via Google Cloud Vision if storagePath provided
+    // 3. Receipt verification if storagePath provided
     if (data.storagePath) {
-      try {
-        receiptVerified = true;
-        try {
-          const ocrResult = await analyzeReceiptOnce(
-            data.sessionId,
-            data.storagePath,
-            session.amountPaise
-          );
-          if (!transactionRef && ocrResult.transactionReference) {
-            transactionRef = ocrResult.transactionReference;
-          }
-          ocrExtractedAmount = ocrResult.extractedAmountPaise;
-          ocrConfidence = ocrResult.confidence;
-        } catch (ocrErr) {
-          if (
-            ocrErr instanceof HttpsError &&
-            !['unavailable', 'resource-exhausted'].includes(ocrErr.code)
-          )
-            throw ocrErr;
-          console.warn(
-            'OCR text extraction failed; receipt remains available for manual review:',
-            ocrErr
-          );
-        }
-      } catch (receiptError) {
-        if (receiptError instanceof HttpsError) throw receiptError;
-        console.error('Receipt validation failed:', receiptError);
-        throw new HttpsError(
-          'unavailable',
-          'Unable to validate the uploaded receipt. Please try again.'
-        );
-      }
+      receiptVerified = true;
     }
 
     // Require either a transaction reference or an uploaded receipt image

@@ -5,7 +5,7 @@ import { PaymentPage } from './PaymentPage';
 import { EventProvider } from '../context/EventContext';
 import { httpsCallable } from 'firebase/functions';
 
-// Mock Firebase functions
+// Mock Firebase functions and storage
 vi.mock('../services/firebase', () => ({
   functions: {},
   storage: {},
@@ -16,6 +16,11 @@ vi.mock('firebase/functions', () => ({
   httpsCallable: vi.fn(),
 }));
 
+vi.mock('firebase/storage', () => ({
+  ref: vi.fn(),
+  uploadBytes: vi.fn(),
+}));
+
 const mockSessionData = {
   sessionId: 'sess_123',
   entityType: 'ORDER',
@@ -24,6 +29,14 @@ const mockSessionData = {
   currency: 'INR',
   status: 'PENDING_PAYMENT',
   expiresAt: new Date(Date.now() + 3600000).toISOString(),
+  paymentDisplayConfig: {
+    upiVpa: 'racjpn2425@ybl',
+    payeeName: 'Rotaract Club of Bangalore JP Nagar',
+    bankName: 'State Bank of India',
+    accountNumber: '12345678901',
+    ifscCode: 'SBIN0040333',
+    branch: 'JP Nagar Branch',
+  },
 };
 
 const renderWithProviders = (ui: React.ReactElement, initialEntry = '/') => {
@@ -47,7 +60,7 @@ describe('PaymentPage Component', () => {
     expect(screen.getByRole('link', { name: /Return to Status Page/i })).toBeInTheDocument();
   });
 
-  it('renders online gateway checkout when payment session loads', async () => {
+  it('renders UPI QR code and payment proof upload when session loads', async () => {
     const mockCallable = vi.fn().mockResolvedValue({ data: mockSessionData });
     vi.mocked(httpsCallable).mockReturnValue(mockCallable as any);
 
@@ -55,19 +68,19 @@ describe('PaymentPage Component', () => {
 
     // Wait for session to load
     await waitFor(() => {
-      expect(screen.getByText(/Instant Online Payment/i)).toBeInTheDocument();
+      expect(screen.getByText(/Scan & Pay via UPI/i)).toBeInTheDocument();
     });
 
     // Check merchant reference and amount
     expect(screen.getByText('PIP-TEST-001')).toBeInTheDocument();
-    expect(screen.getByText(/Pay ₹499 Now/i)).toBeInTheDocument();
+    expect(screen.getByText('₹499')).toBeInTheDocument();
 
-    // Verify supported methods
-    expect(screen.getByText(/UPI Apps/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Cards/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/NetBanking/i).length).toBeGreaterThanOrEqual(1);
+    // Verify UPI VPA display
+    expect(screen.getByText('racjpn2425@ybl')).toBeInTheDocument();
 
-    // Verify reassurance badges
-    expect(screen.getByText(/Payment is routed directly to the organizing committee for instant approval./i)).toBeInTheDocument();
+    // Verify upload proof dropzone and submit button
+    expect(screen.getByText(/Upload Payment Proof/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tap or drag payment screenshot/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Confirm & Submit Proof/i })).toBeInTheDocument();
   });
 });
