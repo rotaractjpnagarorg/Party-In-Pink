@@ -56,8 +56,11 @@ export const PaymentPage: React.FC = () => {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
   const [uploadedStoragePath, setUploadedStoragePath] = useState<string | null>(null);
-  const [scanStatus, setScanStatus] = useState<'IDLE' | 'SCANNING' | 'DETECTED' | 'NOT_FOUND' | 'DUPLICATE'>('IDLE');
+  const [scanStatus, setScanStatus] = useState<
+    'IDLE' | 'SCANNING' | 'DETECTED' | 'NOT_FOUND' | 'DUPLICATE' | 'AMOUNT_MISMATCH'
+  >('IDLE');
   const [detectedUtr, setDetectedUtr] = useState<string | null>(null);
+  const [detectedAmountPaise, setDetectedAmountPaise] = useState<number | null>(null);
   const [scanWarnings, setScanWarnings] = useState<string[]>([]);
   const [utr, setUtr] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -189,9 +192,8 @@ export const PaymentPage: React.FC = () => {
     try {
       const path = `receipts/${session.sessionId}/receipt`;
       const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, file, {
-        contentType: file.type || 'image/jpeg',
-      });
+      const contentType = file.type?.startsWith('image/') ? file.type : 'image/jpeg';
+      await uploadBytes(storageRef, file, { contentType });
       setUploadedStoragePath(path);
 
       const analyzeCallable = httpsCallable<
@@ -218,20 +220,24 @@ export const PaymentPage: React.FC = () => {
         storagePath: path,
       });
 
-      const { transactionReference, validation } = response.data;
+      const { transactionReference, extractedAmountPaise, validation } = response.data;
       const warnings = validation?.warnings || [];
       setScanWarnings(warnings);
+      setDetectedAmountPaise(extractedAmountPaise ?? null);
 
+      // Pre-fill UTR in the input box immediately if found
       if (transactionReference) {
         setUtr(transactionReference);
         setDetectedUtr(transactionReference);
+      }
 
-        if (validation?.isDuplicateUtr) {
-          // Hard-block: this UTR belongs to another verified payment
-          setScanStatus('DUPLICATE');
-        } else {
-          setScanStatus('DETECTED');
-        }
+      // Enforce strict blocking validations
+      if (validation?.isAmountMismatch) {
+        setScanStatus('AMOUNT_MISMATCH');
+      } else if (validation?.isDuplicateUtr) {
+        setScanStatus('DUPLICATE');
+      } else if (transactionReference) {
+        setScanStatus('DETECTED');
       } else {
         setScanStatus('NOT_FOUND');
       }
@@ -331,13 +337,13 @@ export const PaymentPage: React.FC = () => {
   const isDonation = session?.entityType === 'DONATION';
 
   return (
-    <div className="py-6 sm:py-12 bg-slate-50 min-h-screen overflow-x-hidden">
-      <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 space-y-5 sm:space-y-8 overflow-hidden">
+    <div className="py-6 sm:py-12 bg-slate-50 min-h-screen w-full max-w-full overflow-x-hidden">
+      <div className="max-w-4xl mx-auto w-full px-3 sm:px-6 lg:px-8 space-y-5 sm:space-y-8 overflow-hidden box-border">
         {/* Header */}
         <div className="text-center">
-          <div className="inline-flex items-center space-x-2 text-xs font-bold text-pip-700 bg-pip-50 px-3.5 py-1.5 rounded-full mb-3 border border-pip-200 shadow-sm">
-            <ShieldCheck className="w-4 h-4 text-pip-600" />
-            <span>0% Platform Fees • 100% Goes Directly to Cause</span>
+          <div className="inline-flex items-center space-x-2 text-[11px] sm:text-xs font-bold text-pip-700 bg-pip-50 px-3 py-1.5 rounded-full mb-3 border border-pip-200 shadow-sm max-w-full">
+            <ShieldCheck className="w-4 h-4 text-pip-600 shrink-0" />
+            <span className="truncate">0% Platform Fees • 100% Goes Directly to Cause</span>
           </div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">
             {isDonation ? 'Complete Your Donation' : 'Complete Your Payment'}
@@ -608,10 +614,32 @@ export const PaymentPage: React.FC = () => {
                       <p className="text-[11px] text-slate-500">
                         {receiptFile ? `${(receiptFile.size / 1024).toFixed(0)} KB` : ''}
                       </p>
-                      <span className="inline-flex items-center space-x-1 mt-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                        <span>Ready to submit</span>
-                      </span>
+                      {scanStatus === 'SCANNING' ? (
+                        <span className="inline-flex items-center space-x-1 mt-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 animate-pulse">
+                          <Loader2 className="w-3 h-3 animate-spin text-amber-600" />
+                          <span>AI reading screenshot...</span>
+                        </span>
+                      ) : scanStatus === 'AMOUNT_MISMATCH' ? (
+                        <span className="inline-flex items-center space-x-1 mt-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                          <AlertCircle className="w-3 h-3 text-rose-600" />
+                          <span>Amount mismatch</span>
+                        </span>
+                      ) : scanStatus === 'DUPLICATE' ? (
+                        <span className="inline-flex items-center space-x-1 mt-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                          <AlertCircle className="w-3 h-3 text-rose-600" />
+                          <span>Duplicate UTR</span>
+                        </span>
+                      ) : scanStatus === 'DETECTED' ? (
+                        <span className="inline-flex items-center space-x-1 mt-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>UTR Auto-Filled</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center space-x-1 mt-1 text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                          <CheckCircle2 className="w-3 h-3 text-slate-500" />
+                          <span>Ready to submit</span>
+                        </span>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -620,6 +648,7 @@ export const PaymentPage: React.FC = () => {
                         setReceiptPreviewUrl(null);
                         setScanStatus('IDLE');
                         setDetectedUtr(null);
+                        setDetectedAmountPaise(null);
                         setScanWarnings([]);
                         setUploadedStoragePath(null);
                         setUtr('');
@@ -688,6 +717,27 @@ export const PaymentPage: React.FC = () => {
                   </div>
                 )}
 
+                {/* Amount Mismatch — hard block */}
+                {scanStatus === 'AMOUNT_MISMATCH' && (
+                  <div className="mt-2.5 p-3.5 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 text-xs space-y-1.5">
+                    <div className="flex items-center space-x-1.5 font-black text-rose-800">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>Payment Amount Mismatch — Submission Blocked</span>
+                    </div>
+                    <p className="text-[11px] text-rose-700 leading-relaxed">
+                      Your screenshot shows an amount of{' '}
+                      <strong className="font-bold text-rose-900 bg-white px-1.5 py-0.5 rounded border border-rose-200">
+                        ₹{detectedAmountPaise ? (detectedAmountPaise / 100).toFixed(2) : 'incorrect'}
+                      </strong>
+                      , but this transaction requires exactly{' '}
+                      <strong className="font-bold text-rose-900 bg-white px-1.5 py-0.5 rounded border border-rose-200">
+                        ₹{session?.amountPaise ? (session.amountPaise / 100).toFixed(2) : amountFormatted}
+                      </strong>
+                      . Please pay the exact amount and upload the corresponding receipt.
+                    </p>
+                  </div>
+                )}
+
                 {/* Duplicate UTR — hard block */}
                 {scanStatus === 'DUPLICATE' && detectedUtr && (
                   <div className="mt-2.5 p-3.5 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 text-xs space-y-1.5">
@@ -701,8 +751,8 @@ export const PaymentPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Validation warnings (amount mismatch, missing success status) */}
-                {scanWarnings.length > 0 && scanStatus !== 'DUPLICATE' && (
+                {/* Validation warnings (missing success status, etc.) */}
+                {scanWarnings.length > 0 && scanStatus !== 'DUPLICATE' && scanStatus !== 'AMOUNT_MISMATCH' && (
                   <div className="mt-2.5 space-y-2">
                     {scanWarnings.map((warning, idx) => (
                       <div
@@ -742,7 +792,14 @@ export const PaymentPage: React.FC = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isSubmitting || (!receiptFile && !utr.trim()) || timeLeft === 0 || scanStatus === 'DUPLICATE'}
+                disabled={
+                  isSubmitting ||
+                  (!receiptFile && !utr.trim()) ||
+                  timeLeft === 0 ||
+                  scanStatus === 'DUPLICATE' ||
+                  scanStatus === 'AMOUNT_MISMATCH' ||
+                  scanStatus === 'SCANNING'
+                }
                 className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-pip-600 via-pink-600 to-rose-500 hover:from-pip-700 hover:to-pink-700 text-white font-extrabold text-base shadow-lg shadow-pip-500/25 transition active:scale-98 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed group"
               >
                 {isSubmitting ? (

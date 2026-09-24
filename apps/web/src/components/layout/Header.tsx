@@ -52,7 +52,7 @@ export const Header: React.FC = () => {
 
   return (
     <header
-      className={`sticky top-0 z-50 border-b transition-[background-color,border-color,box-shadow] duration-300 ${
+      className={`sticky top-0 z-50 border-b w-full max-w-full overflow-x-hidden transition-[background-color,border-color,box-shadow] duration-300 ${
         isTransparent
           ? 'border-transparent bg-transparent'
           : 'border-slate-200/80 bg-white/95 shadow-sm backdrop-blur-md'

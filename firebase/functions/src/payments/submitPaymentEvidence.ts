@@ -209,7 +209,22 @@ export const submitPaymentEvidence = onCall(
         }
         ocrExtractedAmount = ocrResult.extractedAmountPaise;
         ocrConfidence = ocrResult.confidence;
+
+        // Hard-reject amount mismatch detected by OCR
+        if (
+          typeof ocrExtractedAmount === 'number' &&
+          ocrExtractedAmount > 0 &&
+          ocrExtractedAmount !== session.amountPaise
+        ) {
+          const expected = `₹${(session.amountPaise / 100).toFixed(2)}`;
+          const found = `₹${(ocrExtractedAmount / 100).toFixed(2)}`;
+          throw new HttpsError(
+            'failed-precondition',
+            `Amount mismatch: uploaded screenshot shows ${found}, but this payment requires ${expected}. Submission blocked.`
+          );
+        }
       } catch (ocrErr) {
+        if (ocrErr instanceof HttpsError) throw ocrErr;
         console.warn(
           'OCR text extraction failed; receipt remains available for manual review:',
           ocrErr

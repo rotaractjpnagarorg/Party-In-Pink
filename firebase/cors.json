@@ -1,0 +1,25 @@
+[
+  {
+    "origin": [
+      "https://pip.rotaractjpnagar.org",
+      "https://rotaractjpnagar.org",
+      "https://*.rotaractjpnagar.org",
+      "https://*.netlify.app",
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "*"
+    ],
+    "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
+    "responseHeader": [
+      "Content-Type",
+      "Content-Length",
+      "Authorization",
+      "x-goog-resumable",
+      "x-firebase-storage-version",
+      "x-goog-upload-protocol",
+      "x-goog-upload-command",
+      "x-goog-upload-offset"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]
