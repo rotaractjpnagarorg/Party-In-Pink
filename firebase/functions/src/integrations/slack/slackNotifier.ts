@@ -1,5 +1,6 @@
-import { PUBLIC_WEB_URL, SLACK_WEBHOOK_URL } from '../../config/secrets.js';
+import { PUBLIC_WEB_URL, SLACK_WEBHOOK_URL, SLACK_APPROVER_USER_IDS } from '../../config/secrets.js';
 import { storage } from '../../config/firebase.js';
+import { getDownloadURL } from 'firebase-admin/storage';
 
 const SLACK_REQUEST_TIMEOUT_MS = 8_000;
 
@@ -47,6 +48,16 @@ export function buildPaymentApprovalBlocks(input: SlackPaymentNotificationInput)
   const source = escapeSlackMrkdwn(input.source);
   const storagePath = escapeSlackMrkdwn(input.storagePath);
 
+  const approverIds = SLACK_APPROVER_USER_IDS?.value?.();
+  const approverMention = approverIds
+    ? approverIds
+        .split(',')
+        .map((u) => u.trim())
+        .filter(Boolean)
+        .map((u) => `<@${u}>`)
+        .join(' ')
+    : '';
+
   return [
     {
       type: 'header',
@@ -56,6 +67,17 @@ export function buildPaymentApprovalBlocks(input: SlackPaymentNotificationInput)
         emoji: true,
       },
     },
+    ...(approverMention
+      ? [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `🔔 *Action Required:* ${approverMention} — please review and verify payment credit below:`,
+            },
+          },
+        ]
+      : []),
     ...(input.isDuplicate
       ? [
           {
@@ -212,26 +234,42 @@ export async function notifySlackPaymentSubmitted(
     return false;
   }
 
-  // Pre-generate signed URL for receipt screenshot if storagePath is provided
-  let receiptSignedUrl = input.receiptUrl || null;
-  if (!receiptSignedUrl && input.storagePath) {
+  // Pre-generate download URL for receipt screenshot if storagePath is provided
+  let receiptDownloadUrl = input.receiptUrl || null;
+  if (!receiptDownloadUrl && input.storagePath) {
     try {
       const file = storage.bucket().file(input.storagePath);
       const [exists] = await file.exists();
       if (exists) {
-        const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days validity
-        const [url] = await file.getSignedUrl({ action: 'read', expires: expiresAt });
-        receiptSignedUrl = url;
+        try {
+          // Token-based download URL does not require iam.serviceAccounts.signBlob permission
+          receiptDownloadUrl = await getDownloadURL(file);
+        } catch {
+          // Fallback to signed URL if getDownloadURL encounters issue
+          const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+          const [url] = await file.getSignedUrl({ action: 'read', expires: expiresAt });
+          receiptDownloadUrl = url;
+        }
       }
     } catch (signErr) {
-      console.warn('[Slack Notifier] Failed to create signed URL for receipt:', signErr);
+      console.warn('[Slack Notifier] Failed to create download URL for receipt:', signErr);
     }
   }
 
   const blocks = buildPaymentApprovalBlocks({
     ...input,
-    receiptUrl: receiptSignedUrl,
+    receiptUrl: receiptDownloadUrl,
   });
+
+  const approverIds = SLACK_APPROVER_USER_IDS?.value?.();
+  const approverMention = approverIds
+    ? approverIds
+        .split(',')
+        .map((u) => u.trim())
+        .filter(Boolean)
+        .map((u) => `<@${u}>`)
+        .join(' ')
+    : '';
 
   try {
     const response = await fetch(webhookUrl, {
@@ -239,7 +277,7 @@ export async function notifySlackPaymentSubmitted(
       headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(SLACK_REQUEST_TIMEOUT_MS),
       body: JSON.stringify({
-        text: `PiP 5.0 Payment: ${input.entityReference} (${input.buyerName} - ₹${input.amountPaise / 100})`,
+        text: `🔔 ${approverMention ? `${approverMention} ` : ''}PiP 5.0 Payment: ${input.entityReference} (${input.buyerName} - ₹${input.amountPaise / 100})`,
         blocks,
       }),
     });

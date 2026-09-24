@@ -14,6 +14,7 @@ import {
   Download,
   X,
   Building,
+  Sparkles,
 } from 'lucide-react';
 import { useEvent } from '../context/EventContext.js';
 import { formatINR } from '@pip/shared';
@@ -53,6 +54,9 @@ export const PaymentPage: React.FC = () => {
   // Proof submission state
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
+  const [uploadedStoragePath, setUploadedStoragePath] = useState<string | null>(null);
+  const [scanStatus, setScanStatus] = useState<'IDLE' | 'SCANNING' | 'DETECTED' | 'NOT_FOUND'>('IDLE');
+  const [detectedUtr, setDetectedUtr] = useState<string | null>(null);
   const [utr, setUtr] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -149,11 +153,15 @@ export const PaymentPage: React.FC = () => {
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
   };
 
-  const handleFileChange = (file: File | null) => {
+  const handleFileChange = async (file: File | null) => {
     if (receiptPreviewUrl) {
       URL.revokeObjectURL(receiptPreviewUrl);
       setReceiptPreviewUrl(null);
     }
+    setDetectedUtr(null);
+    setScanStatus('IDLE');
+    setUploadedStoragePath(null);
+
     if (!file) {
       setReceiptFile(null);
       return;
@@ -169,6 +177,40 @@ export const PaymentPage: React.FC = () => {
     setError(null);
     setReceiptFile(file);
     setReceiptPreviewUrl(URL.createObjectURL(file));
+
+    // Instantly upload and trigger AI OCR scan so UTR auto-populates in real time
+    if (!session || !token) return;
+    setScanStatus('SCANNING');
+    try {
+      const path = `receipts/${session.sessionId}/receipt`;
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file, {
+        contentType: file.type || 'image/jpeg',
+      });
+      setUploadedStoragePath(path);
+
+      const analyzeCallable = httpsCallable<
+        { statusToken: string; sessionId: string; storagePath: string },
+        { transactionReference?: string | null; extractedAmountPaise?: number | null; confidence?: number | null }
+      >(functions, 'analyzePaymentReceipt');
+
+      const response = await analyzeCallable({
+        statusToken: token,
+        sessionId: session.sessionId,
+        storagePath: path,
+      });
+
+      if (response.data?.transactionReference) {
+        setUtr(response.data.transactionReference);
+        setDetectedUtr(response.data.transactionReference);
+        setScanStatus('DETECTED');
+      } else {
+        setScanStatus('NOT_FOUND');
+      }
+    } catch (err: any) {
+      console.warn('Real-time receipt OCR warning (non-blocking):', err);
+      setScanStatus('NOT_FOUND');
+    }
   };
 
   const handleSubmitProof = async (e: React.FormEvent) => {
@@ -190,10 +232,10 @@ export const PaymentPage: React.FC = () => {
     setError(null);
 
     try {
-      let storagePath: string | undefined = undefined;
+      let storagePath: string | undefined = uploadedStoragePath || undefined;
 
-      // 1. Upload screenshot to Firebase Storage if selected
-      if (receiptFile) {
+      // Upload screenshot to Firebase Storage if not already uploaded during real-time scan
+      if (receiptFile && !storagePath) {
         const path = `receipts/${session.sessionId}/receipt`;
         const storageRef = ref(storage, path);
         await uploadBytes(storageRef, receiptFile, {
@@ -545,6 +587,10 @@ export const PaymentPage: React.FC = () => {
                       onClick={() => {
                         setReceiptFile(null);
                         setReceiptPreviewUrl(null);
+                        setScanStatus('IDLE');
+                        setDetectedUtr(null);
+                        setUploadedStoragePath(null);
+                        setUtr('');
                       }}
                       className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white transition"
                       title="Remove"
@@ -567,9 +613,34 @@ export const PaymentPage: React.FC = () => {
                       type="file"
                       accept="image/png, image/jpeg, image/webp"
                       className="hidden"
-                      onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+                      onChange={(e) => void handleFileChange(e.target.files?.[0] || null)}
                     />
                   </label>
+                )}
+
+                {/* Real-time AI OCR scanning feedback */}
+                {scanStatus === 'SCANNING' && (
+                  <div className="mt-2.5 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center space-x-2 animate-pulse">
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-600 shrink-0" />
+                    <span className="font-semibold">
+                      AI is scanning screenshot to auto-detect 12-digit UTR...
+                    </span>
+                  </div>
+                )}
+
+                {scanStatus === 'DETECTED' && detectedUtr && (
+                  <div className="mt-2.5 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-950 text-xs space-y-1">
+                    <div className="flex items-center space-x-1.5 font-black text-emerald-900">
+                      <Sparkles className="w-4 h-4 text-emerald-600" />
+                      <span>AI Auto-Detected UTR:</span>
+                      <span className="font-mono text-xs font-black bg-white px-2 py-0.5 rounded border border-emerald-200 tracking-wider">
+                        {detectedUtr}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-700">
+                      Auto-populated into the 12-digit reference field below.
+                    </p>
+                  </div>
                 )}
               </div>
 

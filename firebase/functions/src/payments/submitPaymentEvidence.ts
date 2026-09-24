@@ -9,6 +9,7 @@ import {
   type PaymentSession,
 } from '@pip/shared';
 import { SLACK_WEBHOOK_URL } from '../config/secrets.js';
+import { analyzeReceiptOnce } from './receiptOcrService.js';
 
 interface SubmitPaymentEvidenceRequest {
   statusToken: string;
@@ -194,9 +195,26 @@ export const submitPaymentEvidence = onCall(
     let ocrConfidence: number | null = null;
     let receiptVerified = false;
 
-    // 3. Receipt verification if storagePath provided
+    // 3. Receipt verification & OCR extraction if storagePath provided
     if (data.storagePath) {
       receiptVerified = true;
+      try {
+        const ocrResult = await analyzeReceiptOnce(
+          data.sessionId,
+          data.storagePath,
+          session.amountPaise
+        );
+        if (!transactionRef && ocrResult.transactionReference) {
+          transactionRef = ocrResult.transactionReference;
+        }
+        ocrExtractedAmount = ocrResult.extractedAmountPaise;
+        ocrConfidence = ocrResult.confidence;
+      } catch (ocrErr) {
+        console.warn(
+          'OCR text extraction failed; receipt remains available for manual review:',
+          ocrErr
+        );
+      }
     }
 
     // Require either a transaction reference or an uploaded receipt image
