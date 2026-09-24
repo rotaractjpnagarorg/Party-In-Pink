@@ -11,8 +11,6 @@ import {
   Info,
   Heart,
   Home,
-  Sun,
-  Moon,
 } from 'lucide-react';
 import { useEvent } from '../../context/EventContext.js';
 import { BrandLogo } from '../common/BrandLogo.js';
@@ -24,38 +22,6 @@ export const Header: React.FC = () => {
   const { event, isRegistrationOpen } = useEvent();
   const isHome = location.pathname === '/';
   const isTransparent = isHome && !isScrolled && !mobileMenuOpen;
-
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('pip-theme');
-        if (saved === 'dark' || saved === 'light') return saved;
-        if (typeof window.matchMedia === 'function') {
-          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-      } catch {
-        return 'light';
-      }
-    }
-    return 'light';
-  });
-
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      const root = document.documentElement;
-      if (theme === 'dark') {
-        root.classList.add('dark');
-        localStorage.setItem('pip-theme', 'dark');
-      } else {
-        root.classList.remove('dark');
-        localStorage.setItem('pip-theme', 'light');
-      }
-    }
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
-  };
 
   useEffect(() => {
     const updateHeader = () => setIsScrolled(window.scrollY > 24);
@@ -97,7 +63,7 @@ export const Header: React.FC = () => {
           {/* Brand Logo & Title */}
           <Link to="/" className="flex items-center space-x-3 group" onClick={closeMobile}>
             <div className="flex flex-col">
-              <BrandLogo tone={isTransparent || theme === 'dark' ? 'dark-surface' : 'light-surface'} />
+              <BrandLogo tone={isTransparent ? 'dark-surface' : 'light-surface'} />
               <p
                 className={`hidden text-[11px] font-medium tracking-wide transition-colors sm:block mt-0.5 ${
                   isTransparent ? 'text-white/70' : 'text-slate-500'
@@ -136,23 +102,6 @@ export const Header: React.FC = () => {
 
           {/* CTA Action & Mobile Toggle */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Theme Toggle Button */}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label="Toggle dark mode theme"
-              className={`p-2 rounded-xl transition ${
-                isTransparent
-                  ? 'text-white/90 hover:text-white hover:bg-white/10'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800'
-              }`}
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-5 h-5 text-amber-400" />
-              ) : (
-                <Moon className="w-5 h-5" />
-              )}
-            </button>
 
             {isRegistrationOpen ? (
               <Link
