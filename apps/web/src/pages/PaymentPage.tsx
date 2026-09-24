@@ -6,6 +6,7 @@ import {
   Check,
   Upload,
   AlertCircle,
+  AlertTriangle,
   Clock,
   ArrowRight,
   Loader2,
@@ -55,8 +56,9 @@ export const PaymentPage: React.FC = () => {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
   const [uploadedStoragePath, setUploadedStoragePath] = useState<string | null>(null);
-  const [scanStatus, setScanStatus] = useState<'IDLE' | 'SCANNING' | 'DETECTED' | 'NOT_FOUND'>('IDLE');
+  const [scanStatus, setScanStatus] = useState<'IDLE' | 'SCANNING' | 'DETECTED' | 'NOT_FOUND' | 'DUPLICATE'>('IDLE');
   const [detectedUtr, setDetectedUtr] = useState<string | null>(null);
+  const [scanWarnings, setScanWarnings] = useState<string[]>([]);
   const [utr, setUtr] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -160,6 +162,7 @@ export const PaymentPage: React.FC = () => {
     }
     setDetectedUtr(null);
     setScanStatus('IDLE');
+    setScanWarnings([]);
     setUploadedStoragePath(null);
 
     if (!file) {
@@ -191,7 +194,20 @@ export const PaymentPage: React.FC = () => {
 
       const analyzeCallable = httpsCallable<
         { statusToken: string; sessionId: string; storagePath: string },
-        { transactionReference?: string | null; extractedAmountPaise?: number | null; confidence?: number | null }
+        {
+          transactionReference?: string | null;
+          extractedAmountPaise?: number | null;
+          paymentStatusText?: string | null;
+          confidence?: number | null;
+          validation?: {
+            isValid: boolean;
+            isDuplicateUtr: boolean;
+            isAmountMismatch: boolean;
+            isPaymentStatusMissing: boolean;
+            expectedAmountPaise: number;
+            warnings: string[];
+          };
+        }
       >(functions, 'analyzePaymentReceipt');
 
       const response = await analyzeCallable({
@@ -200,15 +216,26 @@ export const PaymentPage: React.FC = () => {
         storagePath: path,
       });
 
-      if (response.data?.transactionReference) {
-        setUtr(response.data.transactionReference);
-        setDetectedUtr(response.data.transactionReference);
-        setScanStatus('DETECTED');
+      const { transactionReference, validation } = response.data;
+      const warnings = validation?.warnings || [];
+      setScanWarnings(warnings);
+
+      if (transactionReference) {
+        setUtr(transactionReference);
+        setDetectedUtr(transactionReference);
+
+        if (validation?.isDuplicateUtr) {
+          // Hard-block: this UTR belongs to another verified payment
+          setScanStatus('DUPLICATE');
+        } else {
+          setScanStatus('DETECTED');
+        }
       } else {
         setScanStatus('NOT_FOUND');
       }
     } catch (err: any) {
       console.warn('Real-time receipt OCR warning (non-blocking):', err);
+      setScanWarnings([]);
       setScanStatus('NOT_FOUND');
     }
   };
@@ -302,18 +329,18 @@ export const PaymentPage: React.FC = () => {
   const isDonation = session?.entityType === 'DONATION';
 
   return (
-    <div className="py-12 bg-slate-50 min-h-screen">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+    <div className="py-6 sm:py-12 bg-slate-50 min-h-screen">
+      <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 space-y-5 sm:space-y-8">
         {/* Header */}
         <div className="text-center">
           <div className="inline-flex items-center space-x-2 text-xs font-bold text-pip-700 bg-pip-50 px-3.5 py-1.5 rounded-full mb-3 border border-pip-200 shadow-sm">
             <ShieldCheck className="w-4 h-4 text-pip-600" />
             <span>0% Platform Fees • 100% Goes Directly to Cause</span>
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">
             {isDonation ? 'Complete Your Donation' : 'Complete Your Payment'}
           </h1>
-          <p className="text-sm text-slate-600 mt-2 max-w-lg mx-auto">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1.5 sm:mt-2 max-w-lg mx-auto">
             Scan the QR code with any UPI app (GPay, PhonePe, Paytm, BHIM) and upload your payment confirmation screenshot below.
           </p>
         </div>
@@ -347,53 +374,55 @@ export const PaymentPage: React.FC = () => {
         )}
 
         {/* Amount & Reference Bar */}
-        <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <span className="text-[11px] text-slate-400 uppercase tracking-wider font-bold block">
-              Reference Code
-            </span>
-            <span className="font-mono text-lg font-extrabold text-slate-900">
-              {session?.merchantReference}
-            </span>
+        <div className="bg-white p-4 sm:p-6 lg:p-7 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center justify-between w-full sm:w-auto gap-3">
+            <div>
+              <span className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-bold block">
+                Reference Code
+              </span>
+              <span className="font-mono text-sm sm:text-lg font-extrabold text-slate-900">
+                {session?.merchantReference}
+              </span>
+            </div>
+
+            {/* 15-Minute Countdown Window */}
+            {timeLeft !== null && (
+              <div
+                className={`flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl border font-mono text-xs sm:text-sm font-black transition ${
+                  timeLeft <= 180
+                    ? 'bg-rose-50 border-rose-300 text-rose-700 animate-pulse'
+                    : 'bg-amber-50 border-amber-200 text-amber-900'
+                }`}
+              >
+                <Clock
+                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
+                    timeLeft <= 180 ? 'text-rose-600' : 'text-amber-600'
+                  }`}
+                />
+                <div className="text-left">
+                  <span className="text-[8px] sm:text-[9px] uppercase tracking-wider block font-sans font-bold text-slate-500">
+                    Window
+                  </span>
+                  <span>{timeLeft > 0 ? formatTimer(timeLeft) : 'EXPIRED'}</span>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* 15-Minute Countdown Window */}
-          {timeLeft !== null && (
-            <div
-              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-2xl border font-mono text-sm font-black transition ${
-                timeLeft <= 180
-                  ? 'bg-rose-50 border-rose-300 text-rose-700 animate-pulse'
-                  : 'bg-amber-50 border-amber-200 text-amber-900'
-              }`}
-            >
-              <Clock
-                className={`w-4 h-4 ${
-                  timeLeft <= 180 ? 'text-rose-600' : 'text-amber-600'
-                }`}
-              />
-              <div className="text-left">
-                <span className="text-[9px] uppercase tracking-wider block font-sans font-bold text-slate-500">
-                  Window
-                </span>
-                <span>{timeLeft > 0 ? formatTimer(timeLeft) : 'EXPIRED'}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="text-right">
-            <span className="text-[11px] text-slate-400 uppercase tracking-wider font-bold block">
+          <div className="text-left sm:text-right">
+            <span className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-bold block">
               Payable Amount
             </span>
-            <span className="font-mono text-2xl sm:text-3xl font-extrabold text-pip-600">
+            <span className="font-mono text-xl sm:text-2xl lg:text-3xl font-extrabold text-pip-600">
               {formatINR(session?.amountPaise || 0)}
             </span>
           </div>
         </div>
 
         {/* Two-Column Grid: Step 1 (QR Code) & Step 2 (Upload Proof) */}
-        <div className="grid lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 items-start">
           {/* Step 1: Scan & Pay */}
-          <div className="lg:col-span-6 bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="lg:col-span-6 bg-white p-4 sm:p-6 lg:p-7 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4 sm:space-y-6">
             <div className="flex items-center space-x-2.5">
               <span className="w-7 h-7 rounded-full bg-pip-600 text-white font-black text-sm flex items-center justify-center">
                 1
@@ -402,12 +431,12 @@ export const PaymentPage: React.FC = () => {
             </div>
 
             {/* QR Code Container */}
-            <div className="p-5 rounded-2xl bg-gradient-to-b from-slate-50 to-pink-50/40 border border-slate-200 flex flex-col items-center justify-center space-y-3">
-              <div className="p-3 bg-white rounded-2xl shadow-md border border-slate-200/80">
+            <div className="p-3 sm:p-5 rounded-2xl bg-gradient-to-b from-slate-50 to-pink-50/40 border border-slate-200 flex flex-col items-center justify-center space-y-3">
+              <div className="p-2 sm:p-3 bg-white rounded-xl sm:rounded-2xl shadow-md border border-slate-200/80">
                 <QRCodeSVG
                   id="pip-qr-svg"
                   value={qrUpiUri}
-                  size={200}
+                  size={typeof window !== 'undefined' && window.innerWidth < 640 ? 160 : 200}
                   level="H"
                   includeMargin={true}
                   className="rounded-lg"
@@ -545,7 +574,7 @@ export const PaymentPage: React.FC = () => {
           </div>
 
           {/* Step 2: Upload Proof & Submit */}
-          <div className="lg:col-span-6 bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="lg:col-span-6 bg-white p-4 sm:p-6 lg:p-7 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4 sm:space-y-6">
             <div className="flex items-center space-x-2.5">
               <span className="w-7 h-7 rounded-full bg-pip-600 text-white font-black text-sm flex items-center justify-center">
                 2
@@ -589,6 +618,7 @@ export const PaymentPage: React.FC = () => {
                         setReceiptPreviewUrl(null);
                         setScanStatus('IDLE');
                         setDetectedUtr(null);
+                        setScanWarnings([]);
                         setUploadedStoragePath(null);
                         setUtr('');
                       }}
@@ -642,6 +672,34 @@ export const PaymentPage: React.FC = () => {
                     </p>
                   </div>
                 )}
+
+                {/* Duplicate UTR — hard block */}
+                {scanStatus === 'DUPLICATE' && detectedUtr && (
+                  <div className="mt-2.5 p-3.5 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 text-xs space-y-1.5">
+                    <div className="flex items-center space-x-1.5 font-black text-rose-800">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>Duplicate UTR Detected — Submission Blocked</span>
+                    </div>
+                    <p className="text-[11px] text-rose-700 leading-relaxed">
+                      The UTR <span className="font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-rose-200">{detectedUtr}</span> has already been used for another payment. Please upload the correct screenshot from your new transaction.
+                    </p>
+                  </div>
+                )}
+
+                {/* Validation warnings (amount mismatch, missing success status) */}
+                {scanWarnings.length > 0 && scanStatus !== 'DUPLICATE' && (
+                  <div className="mt-2.5 space-y-2">
+                    {scanWarnings.map((warning, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start space-x-2"
+                      >
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <span className="font-semibold leading-relaxed">{warning}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Optional UTR Input */}
@@ -669,7 +727,7 @@ export const PaymentPage: React.FC = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isSubmitting || (!receiptFile && !utr.trim()) || timeLeft === 0}
+                disabled={isSubmitting || (!receiptFile && !utr.trim()) || timeLeft === 0 || scanStatus === 'DUPLICATE'}
                 className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-pip-600 via-pink-600 to-rose-500 hover:from-pip-700 hover:to-pink-700 text-white font-extrabold text-base shadow-lg shadow-pip-500/25 transition active:scale-98 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed group"
               >
                 {isSubmitting ? (

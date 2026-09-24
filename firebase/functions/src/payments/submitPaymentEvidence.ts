@@ -272,6 +272,21 @@ export const submitPaymentEvidence = onCall(
           isDuplicateUtr = isDuplicatePaymentReference(existingLock?.paymentId, session.id);
           if (isDuplicateUtr) {
             duplicateEntityRef = existingLock?.entityReference || null;
+
+            // Hard-reject if the original payment is already VERIFIED or actively submitted.
+            // Only route to review for ambiguous states (e.g. REVIEW_REQUIRED).
+            const origPaymentRef = db.collection('paymentSessions').doc(existingLock?.paymentId);
+            const origPaymentDoc = await transaction.get(origPaymentRef);
+            const origStatus = origPaymentDoc.data()?.status;
+            if (
+              origStatus === PaymentStatuses.VERIFIED ||
+              origStatus === PaymentStatuses.PAYMENT_SUBMITTED
+            ) {
+              throw new HttpsError(
+                'already-exists',
+                `This UTR (${normalizedUtr}) has already been used for reference ${duplicateEntityRef || 'another registration'}. Please enter the correct UTR from your payment receipt.`
+              );
+            }
           }
         }
 
