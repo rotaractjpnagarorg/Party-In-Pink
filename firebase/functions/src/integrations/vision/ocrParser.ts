@@ -65,7 +65,7 @@ export function parseReceiptOcrText(
   }
 
   // 2. Extract Amount
-  // Look for currency symbol or INR/Rs followed by digits
+  // Strategy A: Explicit currency symbol or INR/Rs followed by digits
   const amountRegex = /(?:₹|Rs\.?|INR)\s*([0-9,]+(?:\.[0-9]{1,2})?)/i;
   const amountMatch = rawText.match(amountRegex);
 
@@ -75,12 +75,59 @@ export function parseReceiptOcrText(
     if (!isNaN(num) && num > 0) {
       extractedAmountPaise = Math.round(num * 100);
       confidence += 0.25;
+    }
+  }
 
-      // Bonus confidence if extracted amount matches expected amount exactly
-      if (expectedAmountPaise && extractedAmountPaise === expectedAmountPaise) {
-        confidence += 0.15;
+  // Strategy B: Explicit decimal currency amounts like "239.00" (often followed by Sent/Paid or standalone)
+  if (!extractedAmountPaise) {
+    const decimalRegex = /\b([0-9]{1,6}\.[0-9]{2})\b/g;
+    const decimalMatches = [...rawText.matchAll(decimalRegex)];
+    for (const match of decimalMatches) {
+      if (match[1]) {
+        const num = parseFloat(match[1]);
+        if (!isNaN(num) && num > 0 && num < 500000) {
+          extractedAmountPaise = Math.round(num * 100);
+          confidence += 0.2;
+          break;
+        }
       }
     }
+  }
+
+  // Strategy C: Standalone numbers appearing as transaction amount (e.g. PhonePe without ₹ glyph)
+  if (!extractedAmountPaise) {
+    const lines = rawText.split('\n').map((l) => l.trim()).filter(Boolean);
+    const candidateAmounts: number[] = [];
+
+    for (const line of lines) {
+      // Check if line is purely an integer number between 10 and 99999
+      if (/^[0-9]{2,5}$/.test(line)) {
+        const val = parseInt(line, 10);
+        // Exclude 4-digit years like 2025, 2026, 2027 or battery percentages/times
+        if (val !== 2024 && val !== 2025 && val !== 2026 && val !== 2027) {
+          candidateAmounts.push(val);
+        }
+      }
+    }
+
+    if (candidateAmounts.length > 0) {
+      const expectedRupees = expectedAmountPaise ? Math.round(expectedAmountPaise / 100) : null;
+      if (expectedRupees && candidateAmounts.includes(expectedRupees) && expectedAmountPaise !== undefined) {
+        extractedAmountPaise = expectedAmountPaise;
+        confidence += 0.25;
+      } else {
+        const chosen = candidateAmounts[0];
+        if (chosen !== undefined) {
+          extractedAmountPaise = chosen * 100;
+          confidence += 0.15;
+        }
+      }
+    }
+  }
+
+  // Bonus confidence if extracted amount matches expected amount exactly
+  if (extractedAmountPaise && expectedAmountPaise && extractedAmountPaise === expectedAmountPaise) {
+    confidence += 0.15;
   }
 
   // 3. Extract Status Keyword (prioritizing strong confirmations)
