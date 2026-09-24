@@ -97,7 +97,7 @@ export const Header: React.FC = () => {
           {/* Brand Logo & Title */}
           <Link to="/" className="flex items-center space-x-3 group" onClick={closeMobile}>
             <div className="flex flex-col">
-              <BrandLogo tone={isTransparent ? 'dark-surface' : 'light-surface'} />
+              <BrandLogo tone={isTransparent || theme === 'dark' ? 'dark-surface' : 'light-surface'} />
               <p
                 className={`hidden text-[11px] font-medium tracking-wide transition-colors sm:block mt-0.5 ${
                   isTransparent ? 'text-white/70' : 'text-slate-500'
