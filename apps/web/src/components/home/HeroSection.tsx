@@ -63,7 +63,7 @@ export const HeroSection: React.FC = () => {
   });
 
   return (
-    <section className="relative isolate -mt-16 flex min-h-screen min-h-dvh flex-col justify-center overflow-hidden bg-slate-950 pb-8 pt-16 text-white sm:-mt-20 sm:min-h-[760px] sm:pb-16 sm:pt-36 lg:min-h-[820px] lg:pb-20 lg:pt-40">
+    <section className="relative isolate flex min-h-[calc(100vh-4rem)] sm:min-h-[calc(100vh-5rem)] flex-col justify-center overflow-hidden bg-slate-950 py-12 sm:py-20 lg:py-24 text-white">
       <div className="absolute inset-0 -z-20" aria-hidden="true">
         {HERO_IMAGES.map((src, index) => (
           <img
