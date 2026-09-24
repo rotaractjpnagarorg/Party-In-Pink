@@ -73,6 +73,12 @@ export const PrivacyPage: React.FC = () => {
                 serverless logic.
               </li>
               <li>
+                <strong>Cashfree Payments India Pvt. Ltd.:</strong> Our authorized payment gateway
+                partner. Sensitive payment credentials (card numbers, CVVs, net banking logins, or UPI PINs)
+                are encrypted and processed directly on Cashfree's PCI-DSS Level 1 compliant servers and
+                are never handled, stored, or accessible on our systems.
+              </li>
+              <li>
                 <strong>KonfHub:</strong> Used strictly for automated ticket generation and barcode
                 dispatch.
               </li>
@@ -80,6 +86,7 @@ export const PrivacyPage: React.FC = () => {
                 <strong>Brevo:</strong> Used exclusively for sending transactional emails (order
                 confirmations, tickets, and reminders).
               </li>
+
             </ul>
             <p>
               Your contact details are never sold, rented, or shared with commercial advertisers or

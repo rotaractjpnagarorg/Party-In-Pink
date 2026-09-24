@@ -79,6 +79,35 @@ export const TermsPage: React.FC = () => {
               automatically transfer to the rescheduled date. Passes remain valid, and refund
               requests will be reviewed in accordance with our Refund Policy.
             </p>
+
+            <h2 className="text-lg font-bold text-slate-900 pt-4">
+              6. Pricing & Payment Processing
+            </h2>
+            <p>
+              Registration prices are displayed transparently in Indian Rupees (INR):
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5 text-slate-600 text-sm">
+              <li><strong>Individual Entry Pass:</strong> ₹239 per participant.</li>
+              <li><strong>Group / Bulk Pass:</strong> ₹200 per participant (minimum 10 attendees).</li>
+            </ul>
+            <p>
+              All prices include Zumba session entry, refreshments, and participant kit.
+              Online transactions are securely authorized and processed through our licensed payment
+              gateway partner, <strong>Cashfree Payments India Pvt. Ltd.</strong>, supporting UPI
+              (Google Pay, PhonePe, Paytm, BHIM, CRED), Credit/Debit Cards, and Net Banking.
+            </p>
+
+            <h2 className="text-lg font-bold text-slate-900 pt-4">
+              7. Digital Pass Delivery
+            </h2>
+            <p>
+              Admissions are delivered electronically as digital QR entry passes via email and
+              instant portal lookup within minutes of payment verification. For full details,
+              refer to our{' '}
+              <Link to="/shipping" className="text-pip-600 font-semibold underline hover:text-pip-800">
+                Shipping & Digital Delivery Policy
+              </Link>.
+            </p>
           </section>
         </div>
       </div>

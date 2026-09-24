@@ -97,9 +97,15 @@ export const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
+                <Link to="/shipping" className="hover:text-pip-400 transition">
+                  Shipping & Delivery Policy
+                </Link>
+              </li>
+              <li>
                 <Link to="/contact" className="hover:text-pip-400 transition">
                   Contact Us
                 </Link>
+
               </li>
             </ul>
           </div>

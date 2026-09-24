@@ -543,7 +543,13 @@ export const SingleRegisterPage: React.FC = () => {
               </div>
 
               {/* Submit Button (Mobile view) */}
-              <div className="lg:hidden">
+              <div className="lg:hidden space-y-3">
+                <p className="text-[11px] text-slate-500 text-center leading-relaxed">
+                  By clicking Proceed, you agree to our{' '}
+                  <Link to="/terms" className="text-pip-600 underline font-medium hover:text-pip-700">Terms & Conditions</Link>,{' '}
+                  <Link to="/privacy" className="text-pip-600 underline font-medium hover:text-pip-700">Privacy Policy</Link>, and{' '}
+                  <Link to="/refunds" className="text-pip-600 underline font-medium hover:text-pip-700">Refund Policy</Link>.
+                </p>
                 <button
                   type="submit"
                   disabled={loading}
@@ -620,7 +626,7 @@ export const SingleRegisterPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="hidden lg:block pt-2">
+              <div className="hidden lg:block pt-2 space-y-3">
                 <button
                   type="submit"
                   onClick={handleSubmit}
@@ -639,6 +645,12 @@ export const SingleRegisterPage: React.FC = () => {
                     </>
                   )}
                 </button>
+                <p className="text-[11px] text-slate-400 text-center leading-relaxed">
+                  By proceeding, you agree to our{' '}
+                  <Link to="/terms" className="text-pip-600 underline hover:text-pip-700">Terms</Link>,{' '}
+                  <Link to="/privacy" className="text-pip-600 underline hover:text-pip-700">Privacy Policy</Link>, and{' '}
+                  <Link to="/refunds" className="text-pip-600 underline hover:text-pip-700">Refunds</Link>.
+                </p>
               </div>
 
               <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-500 flex items-center space-x-2">

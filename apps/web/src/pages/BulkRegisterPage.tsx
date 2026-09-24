@@ -879,6 +879,12 @@ export const BulkRegisterPage: React.FC = () => {
                       </>
                     )}
                   </button>
+                  <p className="text-[11px] text-slate-500 text-center w-full pt-1">
+                    By confirming and proceeding, you agree to our{' '}
+                    <Link to="/terms" className="text-pip-600 underline font-medium hover:text-pip-700">Terms & Conditions</Link>,{' '}
+                    <Link to="/privacy" className="text-pip-600 underline font-medium hover:text-pip-700">Privacy Policy</Link>, and{' '}
+                    <Link to="/refunds" className="text-pip-600 underline font-medium hover:text-pip-700">Refund Policy</Link>.
+                  </p>
                 </div>
               </div>
             )}

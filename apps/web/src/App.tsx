@@ -11,7 +11,9 @@ import { DetailsPage } from './pages/DetailsPage.js';
 import { TermsPage } from './pages/TermsPage.js';
 import { PrivacyPage } from './pages/PrivacyPage.js';
 import { RefundsPage } from './pages/RefundsPage.js';
+import { ShippingPage } from './pages/ShippingPage.js';
 import { ContactPage } from './pages/ContactPage.js';
+
 import { SingleRegisterPage } from './pages/SingleRegisterPage.js';
 import { StatusPage } from './pages/StatusPage.js';
 import { PaymentPage } from './pages/PaymentPage.js';
@@ -91,7 +93,9 @@ export const App: React.FC = () => {
                   <Route path="/terms" element={<TermsPage />} />
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/refunds" element={<RefundsPage />} />
+                  <Route path="/shipping" element={<ShippingPage />} />
                   <Route path="/contact" element={<ContactPage />} />
+
 
                   {/* Registration & Status Routes */}
                   <Route path="/register" element={<SingleRegisterPage />} />
