@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../services/firebase.js';
-import { Search, CheckCircle, XCircle, AlertTriangle, CreditCard, FileImage } from 'lucide-react';
+import { Search, CheckCircle, XCircle, AlertTriangle, CreditCard, FileImage, Download } from 'lucide-react';
 
 interface PaymentRow {
   id: string;
@@ -128,6 +128,45 @@ export const AdminPaymentsPage: React.FC = () => {
     }
   };
 
+  const exportReconciliationCsv = () => {
+    const escapeCsv = (val: unknown) => {
+      const str = String(val ?? '');
+      const safe = /^[=+\-@]/.test(str) ? `'${str}` : str;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
+
+    const headers = [
+      'Merchant Reference',
+      'Entity Type',
+      'Entity ID',
+      'Amount (INR)',
+      'Status',
+      'Payment Method',
+      'UTR / Bank Ref',
+      'Submitted At',
+    ];
+
+    const rows = filtered.map((p) => [
+      escapeCsv(p.merchantReference),
+      escapeCsv(p.entityType),
+      escapeCsv(p.entityId),
+      escapeCsv((p.amountPaise / 100).toFixed(2)),
+      escapeCsv(p.status),
+      escapeCsv(p.method),
+      escapeCsv(p.utr || 'N/A'),
+      escapeCsv(p.createdAt ? new Date(p.createdAt).toLocaleString('en-IN') : 'N/A'),
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `PiP5-Reconciliation-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -138,9 +177,19 @@ export const AdminPaymentsPage: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-white tracking-tight">Payments</h1>
-        <p className="text-sm text-slate-400 mt-1">Manual payment verification & approval</p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">Payments</h1>
+          <p className="text-sm text-slate-400 mt-1">Manual payment verification & approval</p>
+        </div>
+        <button
+          type="button"
+          onClick={exportReconciliationCsv}
+          className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition shadow-sm self-start sm:self-auto active:scale-95"
+        >
+          <Download className="w-4 h-4 text-pip-400" />
+          <span>Export Reconciliation CSV</span>
+        </button>
       </div>
 
       {/* Filters */}

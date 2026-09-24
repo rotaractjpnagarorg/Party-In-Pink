@@ -76,5 +76,28 @@ describe('Slack payment notification rendering', () => {
       '<https://storage.googleapis.com/pip5-bucket/signed-receipt-url|🔍 *View Uploaded Screenshot (Click to Open)*>'
     );
   });
+
+  it('renders a high-visibility warning block when amount mismatch is detected', () => {
+    const blocks: any[] = buildPaymentApprovalBlocks({
+      paymentId: 'pay_mismatch',
+      merchantReference: 'PIP5-S-MISMATCH',
+      entityReference: 'PIP5-S-MISMATCH',
+      entityType: 'ORDER',
+      amountPaise: 23900,
+      buyerName: 'Rohan Kumar',
+      buyerEmail: 'rohan@example.com',
+      method: 'UPI',
+      source: 'RECEIPT_UPLOAD',
+      ocrAmountPaise: 20000,
+      amountMismatch: true,
+    });
+
+    const mismatchBlock = blocks.find((b: any) =>
+      b.text?.text?.includes('AMOUNT MISMATCH DETECTED')
+    );
+    expect(mismatchBlock).toBeDefined();
+    expect(mismatchBlock.text.text).toContain('Screenshot indicates: *₹200.00*');
+    expect(mismatchBlock.text.text).toContain('Expected: *₹239.00*');
+  });
 });
 

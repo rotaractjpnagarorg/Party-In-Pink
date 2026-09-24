@@ -45,7 +45,7 @@ export const createSingleOrder = onCall(
     const attendeeRef = orderRef.collection('attendees').doc();
     const auditLogRef = db.collection('auditLogs').doc();
     const nowIso = new Date().toISOString();
-    const reservationExpiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+    const reservationExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
     let calculatedAmountPaise = 0;
 

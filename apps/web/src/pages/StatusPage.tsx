@@ -16,6 +16,8 @@ import { useEvent } from '../context/EventContext.js';
 import { formatINR, PaymentStatuses, OrderStatuses, type PublicOrderStatus } from '@pip/shared';
 import { functions } from '../services/firebase.js';
 import { httpsCallable } from 'firebase/functions';
+import confetti from 'canvas-confetti';
+
 
 export const StatusPage: React.FC = () => {
   const { token: routeToken } = useParams<{ token?: string }>();
@@ -74,11 +76,73 @@ export const StatusPage: React.FC = () => {
     }
   };
 
+  const previousPaymentStatusRef = React.useRef<string | null>(null);
+
+  // Confetti on payment verification
+  useEffect(() => {
+    if (!order) return;
+    const isNowVerified =
+      order.paymentStatus === PaymentStatuses.VERIFIED ||
+      order.orderStatus === OrderStatuses.CONFIRMED;
+
+    const wasNotVerified =
+      previousPaymentStatusRef.current &&
+      previousPaymentStatusRef.current !== PaymentStatuses.VERIFIED;
+
+    if (isNowVerified && (wasNotVerified || !previousPaymentStatusRef.current)) {
+      try {
+        if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+          const testCanvas = document.createElement('canvas');
+          if (testCanvas.getContext && testCanvas.getContext('2d')) {
+            confetti({
+              particleCount: 90,
+              spread: 75,
+              origin: { y: 0.6 },
+              colors: ['#db2777', '#f472b6', '#fbbf24', '#34d399', '#60a5fa'],
+            });
+          }
+        }
+      } catch {
+        // ignore confetti errors in headless/test environments
+      }
+    }
+    previousPaymentStatusRef.current = order.paymentStatus;
+  }, [order?.paymentStatus, order?.orderStatus]);
+
   useEffect(() => {
     if (token) {
       fetchStatusByToken(token);
     }
   }, [token]);
+
+  // Live polling while payment is awaiting approval/verification
+  useEffect(() => {
+    if (!token) return;
+
+    const shouldPoll =
+      order?.paymentStatus === PaymentStatuses.PAYMENT_SUBMITTED ||
+      order?.paymentStatus === PaymentStatuses.VERIFYING;
+
+    if (!shouldPoll) return;
+
+    const intervalId = setInterval(async () => {
+      try {
+        const getStatusCallable = httpsCallable<any, PublicOrderStatus>(
+          functions,
+          'getPublicStatus'
+        );
+        const response = await getStatusCallable({ token });
+        if (response.data) {
+          setOrder(response.data);
+        }
+      } catch (pollErr) {
+        console.warn('[Status Poll] Error:', pollErr);
+      }
+    }, 4000);
+
+    return () => clearInterval(intervalId);
+  }, [token, order?.paymentStatus]);
+
 
   // Timeline step calculation
   const getStepStatus = (stepIndex: number) => {

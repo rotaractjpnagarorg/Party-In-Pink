@@ -158,7 +158,7 @@ export const createPaymentSession = onCall(
       }
 
       const merchantReference = generateReference(REFERENCE_PREFIXES.PAYMENT, 6);
-      const defaultExpiry = now.getTime() + 30 * 60 * 1000;
+      const defaultExpiry = now.getTime() + 15 * 60 * 1000;
       const expiresAt = new Date(
         entityType === 'ORDER'
           ? Math.min(defaultExpiry, Date.parse(currentEntity.reservationExpiresAt))

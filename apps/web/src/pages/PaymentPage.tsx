@@ -20,6 +20,7 @@ import {
   X,
   Download,
   Smartphone,
+  Share2,
 } from 'lucide-react';
 import { useEvent } from '../context/EventContext.js';
 import { formatINR } from '@pip/shared';
@@ -144,34 +145,119 @@ export const PaymentPage: React.FC = () => {
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
   };
 
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [isSharingWhatsApp, setIsSharingWhatsApp] = useState(false);
+
   // Initialize or fetch payment session
-  useEffect(() => {
+  const initSession = async () => {
     if (!token) {
       setError('Missing order status token. Please return to the status page or register first.');
       setLoading(false);
       return;
     }
+    setLoading(true);
+    setError(null);
+    try {
+      const createSessionCallable = httpsCallable<any, PaymentSessionData>(
+        functions,
+        'createPaymentSession'
+      );
+      const response = await createSessionCallable({ statusToken: token });
+      setSession(response.data);
+    } catch (err: any) {
+      console.error('Payment session error:', err);
+      setError(err?.message || 'Failed to initialize payment session. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const initSession = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const createSessionCallable = httpsCallable<any, PaymentSessionData>(
-          functions,
-          'createPaymentSession'
-        );
-        const response = await createSessionCallable({ statusToken: token });
-        setSession(response.data);
-      } catch (err: any) {
-        console.error('Payment session error:', err);
-        setError(err?.message || 'Failed to initialize payment session. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  useEffect(() => {
     initSession();
   }, [token]);
+
+  // 15-minute session countdown ticker
+  useEffect(() => {
+    if (!session?.expiresAt) return;
+
+    const updateTimer = () => {
+      const expiryMs = new Date(session.expiresAt).getTime();
+      const remaining = Math.max(0, Math.floor((expiryMs - Date.now()) / 1000));
+      setTimeLeft(remaining);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [session?.expiresAt]);
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  const handleShareWhatsApp = async () => {
+    if (!session) return;
+    setIsSharingWhatsApp(true);
+
+    const shareText =
+      `*Party In Pink 5.0 — UPI Payment Details*\n\n` +
+      `Payee: *${session.paymentDisplayConfig?.payeeName || event.paymentDisplayConfig.payeeName}*\n` +
+      `UPI ID: *${activeVpa}*\n` +
+      `Amount: *₹${((session.amountPaise) / 100).toFixed(2)}*\n` +
+      `Reference: *${session.merchantReference}*\n\n` +
+      `Pay using GPay, PhonePe, or Paytm and complete registration here: ${window.location.href}`;
+
+    try {
+      const svg = document.getElementById('pip-qr-svg');
+      if (svg && navigator.canShare) {
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx?.drawImage(img, 0, 0);
+            canvas.toBlob(async (blob) => {
+              if (blob) {
+                const file = new File(
+                  [blob],
+                  `pip-qr-${session.merchantReference}.png`,
+                  { type: 'image/png' }
+                );
+                if (navigator.canShare({ files: [file] })) {
+                  try {
+                    await navigator.share({
+                      title: 'Party In Pink 5.0 Payment QR',
+                      text: shareText,
+                      files: [file],
+                    });
+                    resolve();
+                    return;
+                  } catch {
+                    // Fall back to direct link
+                  }
+                }
+              }
+              resolve();
+            }, 'image/png');
+          };
+          img.onerror = reject;
+          img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+        });
+      }
+    } catch {
+      // ignore share errors
+    }
+
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+    window.open(waUrl, '_blank');
+    setIsSharingWhatsApp(false);
+  };
 
   // Copy to clipboard helper
   const copyToClipboard = (text: string, fieldName: string) => {
@@ -408,6 +494,29 @@ export const PaymentPage: React.FC = () => {
             </span>
           </div>
 
+          {/* 15-minute Session Countdown Timer */}
+          {timeLeft !== null && (
+            <div
+              className={`flex items-center space-x-2 px-4 py-2 rounded-2xl border font-mono text-sm font-black transition ${
+                timeLeft <= 180
+                  ? 'bg-rose-50 border-rose-300 text-rose-700 animate-pulse'
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+              }`}
+            >
+              <Clock
+                className={`w-4 h-4 ${
+                  timeLeft <= 180 ? 'text-rose-600' : 'text-amber-600'
+                }`}
+              />
+              <div className="text-left">
+                <span className="text-[10px] uppercase tracking-wider block font-sans font-bold text-slate-500">
+                  Payment Window
+                </span>
+                <span>{timeLeft > 0 ? formatTimer(timeLeft) : 'EXPIRED'}</span>
+              </div>
+            </div>
+          )}
+
           <div className="text-right">
             <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold block">
               Payable Amount
@@ -417,6 +526,28 @@ export const PaymentPage: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* Expired Session Alert */}
+        {timeLeft === 0 && (
+          <div className="p-5 rounded-2xl bg-rose-50 border-2 border-rose-300 flex flex-wrap items-center justify-between gap-4 text-rose-950 shadow-sm">
+            <div className="flex items-center space-x-3">
+              <AlertCircle className="w-6 h-6 text-rose-600 shrink-0" />
+              <div>
+                <p className="font-extrabold text-base">Payment Session Expired (15 Minutes)</p>
+                <p className="text-xs text-rose-800 mt-0.5">
+                  Your payment window has expired. Click below to renew your session and complete registration.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void initSession()}
+              className="px-4 py-2 bg-rose-600 text-white rounded-xl font-bold text-xs hover:bg-rose-700 transition shadow-sm shrink-0 active:scale-95"
+            >
+              Renew 15-Min Session
+            </button>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-12 gap-8">
           {/* Left Column: Payment Methods */}
@@ -472,14 +603,26 @@ export const PaymentPage: React.FC = () => {
                       Scan with GPay / PhonePe / Paytm / BHIM
                     </p>
 
-                    <button
-                      type="button"
-                      onClick={handleDownloadQR}
-                      className="mt-3 inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition shadow-sm"
-                    >
-                      <Download className="w-3.5 h-3.5 text-pip-600" />
-                      <span>Download QR to Photos</span>
-                    </button>
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDownloadQR}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition shadow-sm active:scale-95"
+                      >
+                        <Download className="w-3.5 h-3.5 text-pip-600" />
+                        <span>Download QR</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleShareWhatsApp}
+                        disabled={isSharingWhatsApp}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold hover:bg-emerald-100 transition shadow-sm active:scale-95"
+                      >
+                        <Share2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Share on WhatsApp</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Mobile UPI App Chooser */}

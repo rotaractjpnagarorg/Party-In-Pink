@@ -20,6 +20,8 @@ export interface SlackPaymentNotificationInput {
   statusToken?: string | null;
   isDuplicate?: boolean;
   duplicateRef?: string | null;
+  ocrAmountPaise?: number | null;
+  amountMismatch?: boolean;
 }
 
 export function escapeSlackMrkdwn(value: unknown): string {
@@ -61,6 +63,17 @@ export function buildPaymentApprovalBlocks(input: SlackPaymentNotificationInput)
             text: {
               type: 'mrkdwn',
               text: `🚨 *WARNING: DUPLICATE PAYMENT REFERENCE DETECTED!*\nThis reference \`${input.utr || 'Screenshot'}\` was already used by ${input.duplicateRef ? `*${escapeSlackMrkdwn(input.duplicateRef)}*` : 'another registration'}! Marked as *UNDER REVIEW* — verify bank statement carefully before approving.`,
+            },
+          },
+        ]
+      : []),
+    ...(input.amountMismatch && input.ocrAmountPaise
+      ? [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `⚠️ *AMOUNT MISMATCH DETECTED!*\nScreenshot indicates: *₹${(input.ocrAmountPaise / 100).toFixed(2)}* | Expected: *${amountFormatted}*\nPlease verify the exact amount in the SBI account before approving!`,
             },
           },
         ]

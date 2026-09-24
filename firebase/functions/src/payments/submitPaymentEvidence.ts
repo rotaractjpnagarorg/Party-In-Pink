@@ -400,6 +400,11 @@ export const submitPaymentEvidence = onCall(
         statusToken: data.statusToken,
         isDuplicate: submissionResult.isDuplicate,
         duplicateRef: submissionResult.duplicateRef,
+        ocrAmountPaise: ocrExtractedAmount,
+        amountMismatch:
+          typeof ocrExtractedAmount === 'number' &&
+          ocrExtractedAmount > 0 &&
+          ocrExtractedAmount !== session.amountPaise,
       });
     } catch (slackErr) {
       console.warn('Slack payment notification warning (non-blocking):', slackErr);

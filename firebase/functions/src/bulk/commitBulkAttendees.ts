@@ -93,7 +93,7 @@ export const commitBulkAttendees = onCall(
     // 2. Validate all attendee rows
     const validatedAttendees: Attendee[] = [];
     const nowIso = new Date().toISOString();
-    const reservationExpiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+    const reservationExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
     for (let i = 0; i < data.attendees.length; i++) {
       const rawRow = data.attendees[i];
