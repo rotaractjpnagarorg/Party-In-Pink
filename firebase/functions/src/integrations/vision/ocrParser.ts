@@ -29,25 +29,38 @@ export function parseReceiptOcrText(
   let paymentStatusText: string | null = null;
   let confidence = 0;
 
-  // 1. Extract 12-digit UTR / RRN
-  // Primary regex: looks for explicit UTR/RRN/Ref labels followed by 12 digits
-  const utrLabeledRegex =
-    /(?:UTR|RRN|UPI\s*(?:Ref|Reference|Id)?|Txn\s*(?:Id|Ref)?|Ref\s*(?:No)?|Transaction\s*ID)[:\s#-]*([0-9]{12})\b/i;
-  const labeledMatch = rawText.match(utrLabeledRegex);
-
+  // 1. Extract 12-digit UTR / RRN / UPI Ref
+  // Many apps place the label and digits on the same line or next line,
+  // and mobile apps often format the 12 digits with spaces (e.g. 4268 2910 4821).
+  const labeledRegex =
+    /(?:UTR|RRN|UPI\s*(?:Transaction|Txn|Ref|Reference)?\s*(?:ID|Id|No|Number)?|Bank\s*(?:Ref|Reference)?\s*(?:No|Id)?|Transaction\s*(?:ID|Id|Ref)?|Ref\s*(?:No|Id|Number)?|Txn\s*(?:ID|Id)?)\s*[:#-]?\s*([0-9][0-9\s-]{10,16}[0-9])/i;
+  
+  const labeledMatch = rawText.match(labeledRegex);
   if (labeledMatch && labeledMatch[1]) {
-    transactionReference = labeledMatch[1];
-    confidence += 0.55;
-  } else {
-    // Secondary fallback: find any standalone 12-digit number (common for UPI UTRs)
+    const candidate = labeledMatch[1].replace(/[\s-]/g, '');
+    if (candidate.length === 12 && /^[0-9]{12}$/.test(candidate)) {
+      transactionReference = candidate;
+      confidence += 0.6;
+    }
+  }
+
+  // Secondary fallback for 12-digit sequences with standard 4-4-4 spacing or pure 12 digits
+  if (!transactionReference) {
+    // 4-4-4 spacing: e.g. 4268 2910 4821
+    const spacedMatch = rawText.match(/\b([0-9]{4})\s+([0-9]{4})\s+([0-9]{4})\b/);
+    if (spacedMatch) {
+      transactionReference = `${spacedMatch[1]}${spacedMatch[2]}${spacedMatch[3]}`;
+      confidence += 0.45;
+    }
+  }
+
+  // Tertiary fallback: pure standalone 12 digits
+  if (!transactionReference) {
     const standalone12Regex = /\b([0-9]{12})\b/g;
     const standaloneMatches = [...rawText.matchAll(standalone12Regex)];
-    if (standaloneMatches.length > 0) {
-      // Pick the first 12-digit sequence
-      transactionReference = standaloneMatches[0]?.[1] || null;
-      if (transactionReference) {
-        confidence += 0.35;
-      }
+    if (standaloneMatches.length > 0 && standaloneMatches[0]?.[1]) {
+      transactionReference = standaloneMatches[0][1];
+      confidence += 0.35;
     }
   }
 
@@ -70,13 +83,20 @@ export function parseReceiptOcrText(
     }
   }
 
-  // 3. Extract Status Keyword
-  const statusRegex =
-    /\b(Transaction\s+Successful|Payment\s+Successful|Transfer\s+Successful|Paid\s+Successfully|Completed|Successful|Success|Paid)\b/i;
-  const statusMatch = rawText.match(statusRegex);
-  if (statusMatch && statusMatch[1]) {
-    paymentStatusText = statusMatch[1];
+  // 3. Extract Status Keyword (prioritizing strong confirmations)
+  const strongStatusRegex =
+    /\b(Transaction\s+Successful|Payment\s+Successful|Transfer\s+Successful|Paid\s+Successfully|Money\s+Sent\s+Successfully|Completed|Successful|Success)\b/i;
+  const strongMatch = rawText.match(strongStatusRegex);
+  if (strongMatch && strongMatch[1]) {
+    paymentStatusText = strongMatch[1];
     confidence += 0.1;
+  } else {
+    const fallbackStatusRegex = /\b(Paid)\b/i;
+    const fallbackMatch = rawText.match(fallbackStatusRegex);
+    if (fallbackMatch && fallbackMatch[1]) {
+      paymentStatusText = fallbackMatch[1];
+      confidence += 0.05;
+    }
   }
 
   // Clamp confidence to 1.0

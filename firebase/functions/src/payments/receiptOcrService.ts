@@ -172,6 +172,7 @@ export async function analyzeReceiptOnce(
     });
     return result;
   } catch (error) {
+    console.error(`[Receipt OCR Error] Session ${sessionId}, path ${storagePath}:`, error);
     await db.runTransaction(async (transaction) => {
       const current = await transaction.get(sessionRef);
       if (current.data()?.ocrAnalysis?.claimId !== claimId) return;

@@ -5,6 +5,18 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  body {
+    overflow-x: hidden;
+    max-width: 100%;
+    position: relative;
+  }
+  #root {
+    overflow-x: hidden;
+    max-width: 100%;
+    min-width: 0;
   }
 }
 

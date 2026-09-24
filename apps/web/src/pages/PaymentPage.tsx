@@ -132,8 +132,10 @@ export const PaymentPage: React.FC = () => {
   }, [session, vpa, payeeName, amountFormatted]);
 
   const mobileIntentUri = React.useMemo(() => {
-    return `upi://pay?pa=${vpa}&pn=${encodeURIComponent(payeeName)}`;
-  }, [vpa, payeeName]);
+    if (!session) return `upi://pay?pa=${vpa}&pn=${encodeURIComponent(payeeName)}`;
+    const ref = encodeURIComponent(session.merchantReference);
+    return `upi://pay?pa=${vpa}&pn=${encodeURIComponent(payeeName)}&am=${amountFormatted}&cu=INR&tn=${ref}`;
+  }, [session, vpa, payeeName, amountFormatted]);
 
   const handleDownloadQR = () => {
     const svg = document.getElementById('pip-qr-svg');
@@ -329,8 +331,8 @@ export const PaymentPage: React.FC = () => {
   const isDonation = session?.entityType === 'DONATION';
 
   return (
-    <div className="py-6 sm:py-12 bg-slate-50 min-h-screen">
-      <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 space-y-5 sm:space-y-8">
+    <div className="py-6 sm:py-12 bg-slate-50 min-h-screen overflow-x-hidden">
+      <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 space-y-5 sm:space-y-8 overflow-hidden">
         {/* Header */}
         <div className="text-center">
           <div className="inline-flex items-center space-x-2 text-xs font-bold text-pip-700 bg-pip-50 px-3.5 py-1.5 rounded-full mb-3 border border-pip-200 shadow-sm">
@@ -374,13 +376,13 @@ export const PaymentPage: React.FC = () => {
         )}
 
         {/* Amount & Reference Bar */}
-        <div className="bg-white p-4 sm:p-6 lg:p-7 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="bg-white p-4 sm:p-6 lg:p-7 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-3 sm:gap-4 overflow-hidden min-w-0">
           <div className="flex items-center justify-between w-full sm:w-auto gap-3">
             <div>
               <span className="text-[10px] sm:text-[11px] text-slate-400 uppercase tracking-wider font-bold block">
                 Reference Code
               </span>
-              <span className="font-mono text-sm sm:text-lg font-extrabold text-slate-900">
+              <span className="font-mono text-sm sm:text-lg font-extrabold text-slate-900 break-all">
                 {session?.merchantReference}
               </span>
             </div>
@@ -422,7 +424,7 @@ export const PaymentPage: React.FC = () => {
         {/* Two-Column Grid: Step 1 (QR Code) & Step 2 (Upload Proof) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 items-start">
           {/* Step 1: Scan & Pay */}
-          <div className="lg:col-span-6 bg-white p-4 sm:p-6 lg:p-7 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4 sm:space-y-6">
+          <div className="lg:col-span-6 bg-white p-4 sm:p-6 lg:p-7 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4 sm:space-y-6 overflow-hidden min-w-0">
             <div className="flex items-center space-x-2.5">
               <span className="w-7 h-7 rounded-full bg-pip-600 text-white font-black text-sm flex items-center justify-center">
                 1
@@ -475,19 +477,19 @@ export const PaymentPage: React.FC = () => {
               </a>
 
               {/* Official UPI ID with 1-Tap Copy */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-left">
-                <div>
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-left overflow-hidden min-w-0 gap-2">
+                <div className="min-w-0 flex-1">
                   <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">
                     Official UPI ID (GPay / PhonePe / Any UPI)
                   </span>
-                  <span className="font-mono text-xs sm:text-sm font-extrabold text-slate-900">
+                  <span className="font-mono text-xs sm:text-sm font-extrabold text-slate-900 break-all">
                     {vpa}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => copyToClipboard(vpa, 'vpa')}
-                  className={`px-3 py-2 rounded-xl border font-bold text-xs flex items-center space-x-1.5 transition active:scale-95 ${
+                  className={`px-3 py-2 rounded-xl border font-bold text-xs flex items-center space-x-1.5 transition active:scale-95 shrink-0 ${
                     copiedField === 'vpa'
                       ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
                       : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -509,14 +511,14 @@ export const PaymentPage: React.FC = () => {
               </div>
 
               {/* Step-by-Step Instructions Banner */}
-              <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1.5">
-                <p className="font-extrabold flex items-center gap-1.5 text-amber-900">
-                  <span>📱 Fast Mobile Instructions:</span>
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1.5 overflow-hidden">
+                <p className="font-extrabold flex items-center gap-1.5 text-amber-900 text-[11px] sm:text-xs">
+                  <span>📱 Quick Instructions:</span>
                 </p>
-                <ul className="space-y-1 text-[11px] text-amber-900 font-medium">
-                  <li>• <strong>CRED & Paytm users:</strong> Tap <em>"Open UPI App"</em> above to pay directly.</li>
-                  <li>• <strong>GPay & PhonePe users:</strong> Tap <em>"Copy UPI ID"</em>, paste in app, pay <strong>₹{amountFormatted}</strong>.</li>
-                  <li>• <strong>Once paid:</strong> Take a screenshot and upload in <strong>Step 2</strong> on the right!</li>
+                <ul className="space-y-1 text-[10px] sm:text-[11px] text-amber-900 font-medium leading-relaxed">
+                  <li>• <strong>CRED / Paytm:</strong> Tap <em>"Open UPI App"</em> above.</li>
+                  <li>• <strong>GPay / PhonePe:</strong> Copy UPI ID, paste in app, pay <strong>₹{amountFormatted}</strong>.</li>
+                  <li>• <strong>After payment:</strong> Screenshot → Upload in <strong>Step 2</strong> below.</li>
                 </ul>
               </div>
             </div>
@@ -538,28 +540,28 @@ export const PaymentPage: React.FC = () => {
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">Account Name</span>
                     <span className="font-bold text-slate-900">{paymentConfig?.payeeName}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">Account Number</span>
-                      <span className="font-mono font-bold text-slate-900">{paymentConfig?.accountNumber}</span>
+                      <span className="font-mono font-bold text-slate-900 break-all">{paymentConfig?.accountNumber}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => copyToClipboard(paymentConfig?.accountNumber || '', 'acc')}
-                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600"
+                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 shrink-0"
                     >
                       {copiedField === 'acc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">IFSC Code</span>
-                      <span className="font-mono font-bold text-slate-900">{paymentConfig?.ifscCode}</span>
+                      <span className="font-mono font-bold text-slate-900 break-all">{paymentConfig?.ifscCode}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => copyToClipboard(paymentConfig?.ifscCode || '', 'ifsc')}
-                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600"
+                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 shrink-0"
                     >
                       {copiedField === 'ifsc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
@@ -574,7 +576,7 @@ export const PaymentPage: React.FC = () => {
           </div>
 
           {/* Step 2: Upload Proof & Submit */}
-          <div className="lg:col-span-6 bg-white p-4 sm:p-6 lg:p-7 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4 sm:space-y-6">
+          <div className="lg:col-span-6 bg-white p-4 sm:p-6 lg:p-7 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4 sm:space-y-6 overflow-hidden min-w-0">
             <div className="flex items-center space-x-2.5">
               <span className="w-7 h-7 rounded-full bg-pip-600 text-white font-black text-sm flex items-center justify-center">
                 2
@@ -593,15 +595,15 @@ export const PaymentPage: React.FC = () => {
                 </label>
 
                 {receiptPreviewUrl ? (
-                  <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center space-x-3.5">
+                  <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center gap-3 overflow-hidden min-w-0">
                     <img
                       src={receiptPreviewUrl}
                       alt="Payment Preview"
-                      className="w-16 h-16 object-cover rounded-xl border border-slate-200 shadow-sm"
+                      className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border border-slate-200 shadow-sm shrink-0"
                     />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-900 truncate">
-                        {receiptFile?.name}
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <p className="text-xs font-bold text-slate-900 truncate max-w-full">
+                        {receiptFile?.name || 'Screenshot'}
                       </p>
                       <p className="text-[11px] text-slate-500">
                         {receiptFile ? `${(receiptFile.size / 1024).toFixed(0)} KB` : ''}
@@ -629,7 +631,7 @@ export const PaymentPage: React.FC = () => {
                     </button>
                   </div>
                 ) : (
-                  <label className="border-2 border-dashed border-slate-200 hover:border-pip-400 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition text-center bg-slate-50/60 hover:bg-pip-50/30">
+                  <label className="border-2 border-dashed border-slate-200 hover:border-pip-400 rounded-2xl p-5 sm:p-6 flex flex-col items-center justify-center cursor-pointer transition text-center bg-slate-50/60 hover:bg-pip-50/30">
                     <div className="w-10 h-10 rounded-full bg-pip-100 text-pip-600 flex items-center justify-center mb-2">
                       <Upload className="w-5 h-5" />
                     </div>
@@ -642,6 +644,7 @@ export const PaymentPage: React.FC = () => {
                     <input
                       type="file"
                       accept="image/png, image/jpeg, image/webp"
+                      capture="environment"
                       className="hidden"
                       onChange={(e) => void handleFileChange(e.target.files?.[0] || null)}
                     />
@@ -659,17 +662,29 @@ export const PaymentPage: React.FC = () => {
                 )}
 
                 {scanStatus === 'DETECTED' && detectedUtr && (
-                  <div className="mt-2.5 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-950 text-xs space-y-1">
-                    <div className="flex items-center space-x-1.5 font-black text-emerald-900">
-                      <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <div className="mt-2.5 p-3.5 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 text-xs space-y-2">
+                    <div className="flex items-center gap-1.5 font-black text-emerald-900 flex-wrap">
+                      <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>AI Auto-Detected UTR:</span>
-                      <span className="font-mono text-xs font-black bg-white px-2 py-0.5 rounded border border-emerald-200 tracking-wider">
-                        {detectedUtr}
+                    </div>
+                    <div className="font-mono text-base sm:text-lg font-black bg-white px-3 py-2 rounded-xl border-2 border-emerald-300 tracking-[0.15em] text-emerald-900 text-center break-all">
+                      {detectedUtr}
+                    </div>
+                    <p className="text-[11px] text-emerald-700 text-center">
+                      ✅ Auto-populated into the reference field below. Review and submit.
+                    </p>
+                  </div>
+                )}
+
+                {scanStatus === 'NOT_FOUND' && receiptFile && (
+                  <div className="mt-2.5 p-3 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-bold block text-slate-800">Screenshot Attached</span>
+                      <span className="text-[11px] text-slate-600 block mt-0.5">
+                        Could not auto-detect the 12-digit UTR from the image. You can enter the 12-digit UTR below if visible, or leave it blank — our desk will verify it manually.
                       </span>
                     </div>
-                    <p className="text-[11px] text-emerald-700">
-                      Auto-populated into the 12-digit reference field below.
-                    </p>
                   </div>
                 )}
 
