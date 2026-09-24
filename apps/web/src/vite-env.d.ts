@@ -9,8 +9,12 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_APP_ID?: string;
   readonly VITE_FIREBASE_APPCHECK_SITE_KEY?: string;
   readonly VITE_USE_FIREBASE_EMULATORS?: string;
+  readonly VITE_CASHFREE_ENV?: string;
 }
 
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+declare module '@cashfreepayments/cashfree-js';
+

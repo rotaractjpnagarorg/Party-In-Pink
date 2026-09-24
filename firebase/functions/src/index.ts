@@ -55,3 +55,9 @@ export { brevoWebhook } from './integrations/brevo/brevoWebhook.js';
 
 // Scheduled Sweeps & Observability (Phase 12)
 export { expireStalePaymentSessions, dailySummaryJob } from './jobs/scheduledSweeps.js';
+
+// Cashfree Payment Gateway Integration
+export { createCashfreeOrder } from './payments/createCashfreeOrder.js';
+export { verifyCashfreePayment } from './payments/verifyCashfreePayment.js';
+export { cashfreeWebhook } from './integrations/cashfree/cashfreeWebhook.js';
+

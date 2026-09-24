@@ -21,8 +21,12 @@ import {
   Download,
   Smartphone,
   Share2,
+  Zap,
+  CreditCard,
 } from 'lucide-react';
 import { useEvent } from '../context/EventContext.js';
+import { useCashfree } from '../hooks/useCashfree.js';
+
 import { formatINR } from '@pip/shared';
 import { functions, storage } from '../services/firebase.js';
 import { httpsCallable } from 'firebase/functions';
@@ -72,6 +76,22 @@ export const PaymentPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [selectedHandle, setSelectedHandle] = useState<'ybl' | 'ibl' | 'axl'>('ybl');
+
+  const { startCheckout: startCashfreeCheckout, isLoading: cashfreeLoading } = useCashfree();
+
+  const handleCashfreePay = async () => {
+    if (!session?.sessionId) return;
+    setError(null);
+    await startCashfreeCheckout(session.sessionId, {
+      onSuccess: () => {
+        navigate(`/status/${token}?status=verified&gateway=cashfree`);
+      },
+      onFailure: (msg) => {
+        setError(msg);
+      },
+    });
+  };
+
 
   const defaultVpa = session?.paymentDisplayConfig?.upiVpa || event.paymentDisplayConfig?.upiVpa || 'racjpn2425@ybl';
   const prefix = defaultVpa.replace(/@(ybl|ibl|axl)$/i, '');
@@ -552,9 +572,68 @@ export const PaymentPage: React.FC = () => {
         <div className="grid lg:grid-cols-12 gap-8">
           {/* Left Column: Payment Methods */}
           <div className="lg:col-span-7 space-y-6">
+            {/* Cashfree Payment Gateway Box */}
+            <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-br from-pip-50/60 via-pink-50/30 to-amber-50/50 border-2 border-pip-200/80 shadow-md space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-pip-600 to-pink-600 text-white flex items-center justify-center font-black shadow-md shadow-pip-200">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                      <span>Instant Online Payment</span>
+                      <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider bg-emerald-100 text-emerald-800 rounded-full font-bold">
+                        Zero Decline
+                      </span>
+                    </h2>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Pay via GPay, PhonePe, Paytm, Any UPI, Cards, or NetBanking
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={cashfreeLoading || isSubmitting || timeLeft === 0}
+                onClick={handleCashfreePay}
+                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-pip-600 via-pink-600 to-rose-500 hover:from-pip-700 hover:to-pink-700 text-white font-extrabold text-base shadow-lg shadow-pip-500/25 transition active:scale-98 flex items-center justify-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed group"
+              >
+                {cashfreeLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Connecting to Cashfree Gateway...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
+                    <span>Pay {formatINR(session?.amountPaise || 0)} Now</span>
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition" />
+                  </>
+                )}
+              </button>
+
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-slate-500 font-medium">
+                <span>🔒 100% Secure via Cashfree</span>
+                <span>•</span>
+                <span>⚡ Instant Pass Delivery</span>
+                <span>•</span>
+                <span>Zero Manual UTR</span>
+              </div>
+            </div>
+
+            <div className="relative flex py-1 items-center">
+              <div className="flex-grow border-t border-slate-200"></div>
+              <span className="flex-shrink mx-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Or Pay via Direct UPI QR / SBI Bank Transfer
+              </span>
+              <div className="flex-grow border-t border-slate-200"></div>
+            </div>
+
             <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
               {/* Method Switcher Tabs */}
               <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-bold">
+
                 <button
                   type="button"
                   onClick={() => setActiveTab('upi')}

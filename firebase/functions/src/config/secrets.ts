@@ -38,6 +38,10 @@ export const PUBLIC_WEB_URL = defineString('PUBLIC_WEB_URL', {
   default: 'https://pip.rotaractjpnagar.org',
 });
 
+export const CASHFREE_APP_ID = defineSecret('CASHFREE_APP_ID');
+export const CASHFREE_SECRET_KEY = defineSecret('CASHFREE_SECRET_KEY');
+export const CASHFREE_ENV = defineString('CASHFREE_ENV', { default: 'PRODUCTION' });
+
 export const konfHubSecrets = [
   KONFHUB_API_KEY,
   KONFHUB_EVENT_ID,
@@ -45,3 +49,10 @@ export const konfHubSecrets = [
   KONFHUB_ACCESS_CODE_FREE,
   SLACK_WEBHOOK_URL,
 ];
+
+export const cashfreeSecrets = [
+  CASHFREE_APP_ID,
+  CASHFREE_SECRET_KEY,
+  SLACK_WEBHOOK_URL,
+];
+
