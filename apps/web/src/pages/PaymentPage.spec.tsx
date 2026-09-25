@@ -81,6 +81,9 @@ describe('PaymentPage Component', () => {
     // Verify upload proof dropzone and submit button
     expect(screen.getByText(/Upload Payment Proof/i)).toBeInTheDocument();
     expect(screen.getByText(/Tap or drag payment screenshot/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /gallery/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /camera/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /files/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Confirm & Submit Proof/i })).toBeInTheDocument();
   });
 });

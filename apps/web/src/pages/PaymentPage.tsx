@@ -69,6 +69,7 @@ export const PaymentPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showBankDetails, setShowBankDetails] = useState(false);
+  const [showMediaPickerModal, setShowMediaPickerModal] = useState(false);
 
   // Dedicated media picker refs
   const galleryInputRef = React.useRef<HTMLInputElement>(null);
@@ -177,9 +178,10 @@ export const PaymentPage: React.FC = () => {
       setReceiptFile(null);
       return;
     }
+    const hasImageExtension = /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name);
     const isValidImageType =
-      file.type.startsWith('image/') ||
-      ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type);
+      (file.type && (file.type.startsWith('image/') || ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type))) ||
+      hasImageExtension;
     if (!isValidImageType || file.size > 8 * 1024 * 1024) {
       setError('Please upload a valid PNG, JPG, or WEBP screenshot smaller than 8 MB.');
       setReceiptFile(null);
@@ -692,49 +694,79 @@ export const PaymentPage: React.FC = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className="border-2 border-dashed border-slate-200 hover:border-pip-400 rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center transition text-center bg-slate-50/60 hover:bg-pip-50/30">
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const dropped = e.dataTransfer.files?.[0];
+                      if (dropped) void handleFileChange(dropped);
+                    }}
+                    className="border-2 border-dashed border-slate-200 hover:border-pip-400 rounded-2xl p-4 sm:p-5 flex flex-col items-center justify-center transition text-center bg-slate-50/60"
+                  >
+                    {/* Main Dropzone Area - Tapping opens Media Picker */}
                     <div
-                      onClick={() => galleryInputRef.current?.click()}
-                      className="cursor-pointer flex flex-col items-center justify-center w-full"
+                      onClick={() => setShowMediaPickerModal(true)}
+                      className="cursor-pointer flex flex-col items-center justify-center w-full group py-1"
                     >
-                      <div className="w-10 h-10 rounded-full bg-pip-100 text-pip-600 flex items-center justify-center mb-2">
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-pip-500 to-rose-600 text-white flex items-center justify-center mb-2 shadow-md shadow-pip-500/20 group-hover:scale-105 transition">
                         <Upload className="w-5 h-5" />
                       </div>
-                      <span className="text-xs font-bold text-slate-800">
+                      <span className="text-xs sm:text-sm font-extrabold text-slate-800 group-hover:text-pip-600 transition">
                         Tap or drag payment screenshot
                       </span>
                       <span className="text-[11px] text-slate-500 mt-0.5">
-                        PNG, JPG, or WEBP up to 8 MB
+                        Choose via Media Picker: Gallery, Camera, or File Manager (PNG, JPG, WEBP)
                       </span>
                     </div>
 
-                    {/* Dedicated Media Picker Buttons */}
-                    <div className="mt-3.5 pt-3 border-t border-slate-200/80 w-full flex flex-wrap items-center justify-center gap-2">
+                    {/* Dedicated 3-Option Media Picker Bar */}
+                    <div className="mt-3.5 pt-3 border-t border-slate-200/80 w-full grid grid-cols-3 gap-2">
                       <button
                         type="button"
-                        onClick={() => galleryInputRef.current?.click()}
-                        className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white text-slate-700 hover:text-pip-600 hover:border-pip-300 text-xs font-bold rounded-xl border border-slate-200 shadow-sm transition active:scale-95"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          galleryInputRef.current?.click();
+                        }}
+                        className="flex flex-col items-center justify-center p-2 sm:p-2.5 bg-white text-slate-700 hover:text-pink-600 hover:border-pink-300 border border-slate-200 rounded-xl shadow-xs transition hover:shadow-sm active:scale-95 text-center group"
+                        title="Open Photo Gallery"
                       >
-                        <ImageIcon className="w-3.5 h-3.5 text-pip-500" />
-                        <span>Photo Gallery</span>
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center mb-1 group-hover:bg-pink-100 transition">
+                          <ImageIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </div>
+                        <span className="text-[11px] sm:text-xs font-bold block leading-tight">Gallery</span>
+                        <span className="text-[9px] sm:text-[10px] text-slate-400 mt-0.5">Photos</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => cameraInputRef.current?.click()}
-                        className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white text-slate-700 hover:text-pip-600 hover:border-pip-300 text-xs font-bold rounded-xl border border-slate-200 shadow-sm transition active:scale-95"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          cameraInputRef.current?.click();
+                        }}
+                        className="flex flex-col items-center justify-center p-2 sm:p-2.5 bg-white text-slate-700 hover:text-amber-600 hover:border-amber-300 border border-slate-200 rounded-xl shadow-xs transition hover:shadow-sm active:scale-95 text-center group"
+                        title="Open Camera"
                       >
-                        <Camera className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Camera</span>
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mb-1 group-hover:bg-amber-100 transition">
+                          <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </div>
+                        <span className="text-[11px] sm:text-xs font-bold block leading-tight">Camera</span>
+                        <span className="text-[9px] sm:text-[10px] text-slate-400 mt-0.5">Take Photo</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white text-slate-700 hover:text-pip-600 hover:border-pip-300 text-xs font-bold rounded-xl border border-slate-200 shadow-sm transition active:scale-95"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
+                        className="flex flex-col items-center justify-center p-2 sm:p-2.5 bg-white text-slate-700 hover:text-blue-600 hover:border-blue-300 border border-slate-200 rounded-xl shadow-xs transition hover:shadow-sm active:scale-95 text-center group"
+                        title="Open File Manager"
                       >
-                        <FolderOpen className="w-3.5 h-3.5 text-blue-500" />
-                        <span>File Manager</span>
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-1 group-hover:bg-blue-100 transition">
+                          <FolderOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </div>
+                        <span className="text-[11px] sm:text-xs font-bold block leading-tight">Files</span>
+                        <span className="text-[9px] sm:text-[10px] text-slate-400 mt-0.5">File Manager</span>
                       </button>
                     </div>
 
@@ -744,7 +776,12 @@ export const PaymentPage: React.FC = () => {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => void handleFileChange(e.target.files?.[0] || null)}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        e.target.value = '';
+                        setShowMediaPickerModal(false);
+                        void handleFileChange(file);
+                      }}
                     />
                     <input
                       ref={cameraInputRef}
@@ -752,14 +789,24 @@ export const PaymentPage: React.FC = () => {
                       accept="image/*"
                       capture="environment"
                       className="hidden"
-                      onChange={(e) => void handleFileChange(e.target.files?.[0] || null)}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        e.target.value = '';
+                        setShowMediaPickerModal(false);
+                        void handleFileChange(file);
+                      }}
                     />
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept="*/*"
                       className="hidden"
-                      onChange={(e) => void handleFileChange(e.target.files?.[0] || null)}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        e.target.value = '';
+                        setShowMediaPickerModal(false);
+                        void handleFileChange(file);
+                      }}
                     />
                   </div>
                 )}
@@ -928,6 +975,108 @@ export const PaymentPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* Native-Style Media Picker Bottom Sheet / Modal */}
+      {showMediaPickerModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150">
+          <div
+            className="fixed inset-0"
+            onClick={() => setShowMediaPickerModal(false)}
+          />
+          <div className="relative w-full max-w-sm sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 p-5 sm:p-6 space-y-4 z-10 animate-in slide-in-from-bottom-5 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Choose Media Source</h3>
+                <p className="text-xs text-slate-500">Select where to pick your payment receipt from</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMediaPickerModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Options List */}
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMediaPickerModal(false);
+                  galleryInputRef.current?.click();
+                }}
+                className="w-full flex items-center p-3.5 rounded-2xl border border-slate-200 hover:border-pink-300 hover:bg-pink-50/50 transition active:scale-98 text-left group"
+              >
+                <div className="w-11 h-11 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center shrink-0 mr-3.5 group-hover:scale-105 transition">
+                  <ImageIcon className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-pink-600 transition">
+                    Photo Gallery
+                  </h4>
+                  <p className="text-xs text-slate-500 truncate">
+                    Pick screenshot from Photos, Albums, or Gallery
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMediaPickerModal(false);
+                  cameraInputRef.current?.click();
+                }}
+                className="w-full flex items-center p-3.5 rounded-2xl border border-slate-200 hover:border-amber-300 hover:bg-amber-50/50 transition active:scale-98 text-left group"
+              >
+                <div className="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 mr-3.5 group-hover:scale-105 transition">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-amber-600 transition">
+                    Take Photo (Camera)
+                  </h4>
+                  <p className="text-xs text-slate-500 truncate">
+                    Capture payment receipt live with your camera
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMediaPickerModal(false);
+                  fileInputRef.current?.click();
+                }}
+                className="w-full flex items-center p-3.5 rounded-2xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition active:scale-98 text-left group"
+              >
+                <div className="w-11 h-11 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 mr-3.5 group-hover:scale-105 transition">
+                  <FolderOpen className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition">
+                    File Manager / Documents
+                  </h4>
+                  <p className="text-xs text-slate-500 truncate">
+                    Browse Downloads, Google Drive, or device files
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setShowMediaPickerModal(false)}
+                className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
