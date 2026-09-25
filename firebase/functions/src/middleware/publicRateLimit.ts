@@ -5,7 +5,20 @@ import { db } from '../config/firebase.js';
 export function getClientAddress(rawRequest: {
   ip?: string;
   socket?: { remoteAddress?: string | null };
+  headers?: Record<string, string | string[] | undefined>;
 }): string {
+  const forwarded = rawRequest.headers?.['x-forwarded-for'];
+  if (forwarded) {
+    const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+    if (typeof raw === 'string') {
+      const ip = raw.split(',')[0]?.trim();
+      if (ip) return ip;
+    }
+  }
+  const realIp = rawRequest.headers?.['x-real-ip'] || rawRequest.headers?.['fastly-client-ip'];
+  if (typeof realIp === 'string' && realIp.trim()) {
+    return realIp.trim();
+  }
   return rawRequest.ip || rawRequest.socket?.remoteAddress || 'unknown';
 }
 

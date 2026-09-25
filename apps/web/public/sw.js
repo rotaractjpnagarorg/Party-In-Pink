@@ -31,12 +31,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Never intercept or cache Firebase APIs, Firestore, Cloud Functions, or non-GET requests
+  // Never intercept or cache Firebase APIs, Firestore, Cloud Functions, non-GET requests, or hashed JS/CSS assets
   if (
     url.hostname.includes('firebaseio.com') ||
     url.hostname.includes('googleapis.com') ||
     url.hostname.includes('cloudfunctions.net') ||
     url.pathname.startsWith('/api') ||
+    (url.pathname.startsWith('/assets/') && (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'))) ||
     event.request.method !== 'GET'
   ) {
     return;

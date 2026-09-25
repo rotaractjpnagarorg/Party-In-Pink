@@ -4,7 +4,23 @@ import { db } from '../config/firebase.js';
 
 describe('publicRateLimit middleware', () => {
   describe('getClientAddress', () => {
-    it('returns rawRequest.ip when present', () => {
+    it('prioritizes x-forwarded-for header when present', () => {
+      const address = getClientAddress({
+        headers: { 'x-forwarded-for': '203.0.113.195, 10.0.0.1' },
+        ip: '10.0.0.1',
+      });
+      expect(address).toBe('203.0.113.195');
+    });
+
+    it('uses x-real-ip header when present', () => {
+      const address = getClientAddress({
+        headers: { 'x-real-ip': '198.51.100.99' },
+        ip: '10.0.0.1',
+      });
+      expect(address).toBe('198.51.100.99');
+    });
+
+    it('returns rawRequest.ip when headers are missing', () => {
       const address = getClientAddress({ ip: '203.0.113.195' });
       expect(address).toBe('203.0.113.195');
     });

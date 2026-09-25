@@ -32,8 +32,8 @@ export const createSingleOrder = onCall(
     await enforcePublicRateLimit(
       'create-single-order',
       getClientAddress(request.rawRequest),
-      5,
-      60 * 60 * 1000
+      60,
+      15 * 60 * 1000
     );
 
     // 2. Fetch active event configuration
