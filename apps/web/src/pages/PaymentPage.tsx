@@ -134,11 +134,6 @@ export const PaymentPage: React.FC = () => {
     return `upi://pay?pa=${vpa}&pn=${encodeURIComponent(payeeName)}&am=${amountFormatted}&cu=INR&tn=${ref}&tr=${session.merchantReference}`;
   }, [session, vpa, payeeName, amountFormatted]);
 
-  const mobileIntentUri = React.useMemo(() => {
-    if (!session) return `upi://pay?pa=${vpa}&pn=${encodeURIComponent(payeeName)}`;
-    const ref = encodeURIComponent(session.merchantReference);
-    return `upi://pay?pa=${vpa}&pn=${encodeURIComponent(payeeName)}&am=${amountFormatted}&cu=INR&tn=${ref}`;
-  }, [session, vpa, payeeName, amountFormatted]);
 
   const handleDownloadQR = () => {
     const svg = document.getElementById('pip-qr-svg');
@@ -174,10 +169,10 @@ export const PaymentPage: React.FC = () => {
       setReceiptFile(null);
       return;
     }
-    if (
-      !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
-      file.size > 8 * 1024 * 1024
-    ) {
+    const isValidImageType =
+      file.type.startsWith('image/') ||
+      ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type);
+    if (!isValidImageType || file.size > 8 * 1024 * 1024) {
       setError('Please upload a valid PNG, JPG, or WEBP screenshot smaller than 8 MB.');
       setReceiptFile(null);
       return;
@@ -460,33 +455,28 @@ export const PaymentPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="flex items-center space-x-2 pt-1">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1 w-full">
                 <button
                   type="button"
                   onClick={handleDownloadQR}
-                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white text-slate-700 hover:text-pip-600 text-xs font-bold rounded-xl border border-slate-200 shadow-sm transition active:scale-95"
+                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-1.5 px-4 py-2 bg-white text-slate-800 hover:text-pip-600 text-xs font-bold rounded-xl border border-slate-200 shadow-sm transition active:scale-95"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Download QR</span>
+                  <span>Download / Save QR</span>
                 </button>
               </div>
+              <p className="text-[10px] text-slate-500 text-center">
+                💡 On mobile? Save QR to Photos and scan it from your UPI app's gallery scanner.
+              </p>
             </div>
 
-            {/* Mobile-Friendly Quick Pay Options */}
+            {/* UPI ID & Amount 1-Tap Copy */}
             <div className="space-y-2.5">
-              {/* Direct App Link for CRED, Paytm, BHIM */}
-              <a
-                href={mobileIntentUri}
-                className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-pip-600 via-pink-600 to-rose-500 hover:from-pip-700 hover:to-pink-700 text-white font-extrabold text-sm flex items-center justify-center space-x-2 shadow-md shadow-pip-500/25 active:scale-98 transition text-center"
-              >
-                <span>⚡ Open UPI App (CRED, Paytm, BHIM)</span>
-              </a>
-
               {/* Official UPI ID with 1-Tap Copy */}
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-left overflow-hidden min-w-0 gap-2">
                 <div className="min-w-0 flex-1">
                   <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">
-                    Official UPI ID (GPay / PhonePe / Any UPI)
+                    Official UPI ID (GPay • PhonePe • Paytm • CRED)
                   </span>
                   <span className="font-mono text-xs sm:text-sm font-extrabold text-slate-900 break-all">
                     {vpa}
@@ -510,7 +500,41 @@ export const PaymentPage: React.FC = () => {
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Copy ID</span>
+                      <span>Copy UPI ID</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Exact Amount Card with 1-Tap Copy */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-left overflow-hidden min-w-0 gap-2">
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">
+                    Exact Amount to Transfer
+                  </span>
+                  <span className="font-mono text-sm sm:text-base font-extrabold text-slate-900">
+                    ₹{amountFormatted}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(amountFormatted, 'amount')}
+                  className={`px-3 py-2 rounded-xl border font-bold text-xs flex items-center space-x-1.5 transition active:scale-95 shrink-0 ${
+                    copiedField === 'amount'
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                  title="Copy Amount"
+                >
+                  {copiedField === 'amount' ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Copy Amount</span>
                     </>
                   )}
                 </button>
@@ -519,12 +543,12 @@ export const PaymentPage: React.FC = () => {
               {/* Step-by-Step Instructions Banner */}
               <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1.5 overflow-hidden">
                 <p className="font-extrabold flex items-center gap-1.5 text-amber-900 text-[11px] sm:text-xs">
-                  <span>📱 Quick Instructions:</span>
+                  <span>📱 Easy 3-Step Payment:</span>
                 </p>
                 <ul className="space-y-1 text-[10px] sm:text-[11px] text-amber-900 font-medium leading-relaxed">
-                  <li>• <strong>CRED / Paytm:</strong> Tap <em>"Open UPI App"</em> above.</li>
-                  <li>• <strong>GPay / PhonePe:</strong> Copy UPI ID, paste in app, pay <strong>₹{amountFormatted}</strong>.</li>
-                  <li>• <strong>After payment:</strong> Screenshot → Upload in <strong>Step 2</strong> below.</li>
+                  <li>• <strong>1. Scan QR code</strong> with any UPI app, or copy the UPI ID above.</li>
+                  <li>• <strong>2. Transfer exact amount:</strong> ₹{amountFormatted}</li>
+                  <li>• <strong>3. Upload screenshot:</strong> Take a screenshot of the receipt and upload in <strong>Step 2</strong> below.</li>
                 </ul>
               </div>
             </div>
@@ -667,13 +691,12 @@ export const PaymentPage: React.FC = () => {
                     <span className="text-xs font-bold text-slate-800">
                       Tap or drag payment screenshot
                     </span>
-                    <span className="text-[11px] text-slate-400 mt-0.5">
-                      PNG, JPG, or WEBP up to 8 MB
+                    <span className="text-[11px] text-slate-500 mt-0.5">
+                      Choose from Gallery, Photos, or Files (PNG, JPG, WEBP)
                     </span>
                     <input
                       type="file"
-                      accept="image/png, image/jpeg, image/webp"
-                      capture="environment"
+                      accept="image/png, image/jpeg, image/webp, image/*"
                       className="hidden"
                       onChange={(e) => void handleFileChange(e.target.files?.[0] || null)}
                     />

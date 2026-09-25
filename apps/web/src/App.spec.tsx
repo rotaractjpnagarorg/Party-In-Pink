@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import App from './App';
 
@@ -24,17 +24,11 @@ describe('Party In Pink 5.0 App Shell & Routing', () => {
     expect(screen.getByText(/Refunds & Cancellations/i)).toBeInTheDocument();
   });
 
-  it('changes the home navigation from transparent to solid after scrolling', () => {
-    Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
+  it('renders a consistent solid branded navigation header', () => {
     const { container } = render(<App />);
     const header = container.querySelector('header');
 
-    expect(header).toHaveClass('bg-transparent');
-    window.scrollY = 100;
-    fireEvent.scroll(window);
+    expect(header).toBeInTheDocument();
     expect(header).toHaveClass('bg-white/95');
-
-    window.scrollY = 0;
-    fireEvent.scroll(window);
   });
 });
