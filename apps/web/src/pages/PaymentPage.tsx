@@ -16,6 +16,9 @@ import {
   X,
   Building,
   Sparkles,
+  Camera,
+  Image as ImageIcon,
+  FolderOpen,
 } from 'lucide-react';
 import { useEvent } from '../context/EventContext.js';
 import { formatINR } from '@pip/shared';
@@ -66,6 +69,11 @@ export const PaymentPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showBankDetails, setShowBankDetails] = useState(false);
+
+  // Dedicated media picker refs
+  const galleryInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Initialize or fetch payment session
   const initSession = async () => {
@@ -684,23 +692,76 @@ export const PaymentPage: React.FC = () => {
                     </button>
                   </div>
                 ) : (
-                  <label className="border-2 border-dashed border-slate-200 hover:border-pip-400 rounded-2xl p-5 sm:p-6 flex flex-col items-center justify-center cursor-pointer transition text-center bg-slate-50/60 hover:bg-pip-50/30">
-                    <div className="w-10 h-10 rounded-full bg-pip-100 text-pip-600 flex items-center justify-center mb-2">
-                      <Upload className="w-5 h-5" />
+                  <div className="border-2 border-dashed border-slate-200 hover:border-pip-400 rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center transition text-center bg-slate-50/60 hover:bg-pip-50/30">
+                    <div
+                      onClick={() => galleryInputRef.current?.click()}
+                      className="cursor-pointer flex flex-col items-center justify-center w-full"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-pip-100 text-pip-600 flex items-center justify-center mb-2">
+                        <Upload className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-800">
+                        Tap or drag payment screenshot
+                      </span>
+                      <span className="text-[11px] text-slate-500 mt-0.5">
+                        PNG, JPG, or WEBP up to 8 MB
+                      </span>
                     </div>
-                    <span className="text-xs font-bold text-slate-800">
-                      Tap or drag payment screenshot
-                    </span>
-                    <span className="text-[11px] text-slate-500 mt-0.5">
-                      Choose from Gallery, Photos, or Files (PNG, JPG, WEBP)
-                    </span>
+
+                    {/* Dedicated Media Picker Buttons */}
+                    <div className="mt-3.5 pt-3 border-t border-slate-200/80 w-full flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => galleryInputRef.current?.click()}
+                        className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white text-slate-700 hover:text-pip-600 hover:border-pip-300 text-xs font-bold rounded-xl border border-slate-200 shadow-sm transition active:scale-95"
+                      >
+                        <ImageIcon className="w-3.5 h-3.5 text-pip-500" />
+                        <span>Photo Gallery</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white text-slate-700 hover:text-pip-600 hover:border-pip-300 text-xs font-bold rounded-xl border border-slate-200 shadow-sm transition active:scale-95"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Camera</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white text-slate-700 hover:text-pip-600 hover:border-pip-300 text-xs font-bold rounded-xl border border-slate-200 shadow-sm transition active:scale-95"
+                      >
+                        <FolderOpen className="w-3.5 h-3.5 text-blue-500" />
+                        <span>File Manager</span>
+                      </button>
+                    </div>
+
+                    {/* Hidden inputs targeting specific native device pickers */}
                     <input
+                      ref={galleryInputRef}
                       type="file"
-                      accept="image/png, image/jpeg, image/webp, image/*"
+                      accept="image/*"
                       className="hidden"
                       onChange={(e) => void handleFileChange(e.target.files?.[0] || null)}
                     />
-                  </label>
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => void handleFileChange(e.target.files?.[0] || null)}
+                    />
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="*/*"
+                      className="hidden"
+                      onChange={(e) => void handleFileChange(e.target.files?.[0] || null)}
+                    />
+                  </div>
                 )}
 
                 {/* Real-time AI OCR scanning feedback */}
