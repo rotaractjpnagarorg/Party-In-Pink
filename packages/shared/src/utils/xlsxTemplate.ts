@@ -39,7 +39,7 @@ export function generateBulkRegistrationTemplateWorkbook(): ExcelJS.Workbook {
     '5. Mandatory Fields: "Full Name", "Email Address", and 10-digit "Mobile Number" are mandatory for every attendee.',
     '6. Unique Email Required: Every attendee receives their individual entry pass and QR code directly on their registered email.',
     '7. Upload: Once details are filled, save this Excel file and upload it on the Party In Pink bulk registration page.',
-    '8. Need Assistance? Contact our volunteer support desk: partyinpink.rotaract@gmail.com',
+    '8. Need Assistance? Contact our volunteer support desk: rotaractjpnagar@gmail.com',
   ].forEach((line) => instructions.addRow([line]));
   instructions.getRow(1).font = { bold: true, size: 14, color: { argb: 'FFE91E63' } };
   instructions.getRow(4).font = { bold: true, size: 11 };
