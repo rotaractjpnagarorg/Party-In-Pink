@@ -117,6 +117,14 @@ export async function parseBulkRegistrationXlsx(
 
   const worksheet =
     workbook.worksheets.find((sheet) => sheet.name.toLowerCase() === 'participants') ??
+    workbook.worksheets.find((sheet) => {
+      const row1Text = sheet.getRow(1).values;
+      if (Array.isArray(row1Text)) {
+        const textJoined = row1Text.join(' ').toLowerCase();
+        return textJoined.includes('name') && (textJoined.includes('email') || textJoined.includes('mobile'));
+      }
+      return false;
+    }) ??
     workbook.worksheets[0];
   if (!worksheet) return emptyResult('No valid worksheet found in workbook.', 'sheet');
   if (

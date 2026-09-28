@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import ExcelJS from 'exceljs';
-import {
-  generateBulkRegistrationTemplateBuffer,
-  generateBulkRegistrationTemplateWorkbook,
-} from './xlsxTemplate.js';
+import { generateBulkRegistrationTemplateWorkbook } from './xlsxTemplate.js';
 import { parseBulkRegistrationXlsx, sanitizeCellString } from './xlsxParser.js';
 
 async function workbookBuffer(rows: Record<string, unknown>[]): Promise<Uint8Array> {
@@ -16,17 +13,59 @@ async function workbookBuffer(rows: Record<string, unknown>[]): Promise<Uint8Arr
 }
 
 describe('Phase 4: Bulk XLSX Engine & Sanitization', () => {
-  it('generates official template workbook with Participants and Instructions sheets', () => {
+  it('generates official template workbook with Instructions on Sheet 1 and only headers in Participants Sheet 2', () => {
     const workbook = generateBulkRegistrationTemplateWorkbook();
-    expect(workbook.getWorksheet('Participants')).toBeDefined();
-    expect(workbook.getWorksheet('Instructions')).toBeDefined();
+    expect(workbook.worksheets[0]?.name).toBe('Instructions');
+    expect(workbook.worksheets[1]?.name).toBe('Participants');
     const sheet = workbook.getWorksheet('Participants')!;
-    expect(sheet.rowCount).toBe(6);
+    expect(sheet.rowCount).toBe(1);
     expect(sheet.getRow(1).values).toContain('Full Name');
   });
 
-  it('parses valid template buffer without errors', async () => {
-    const result = await parseBulkRegistrationXlsx(await generateBulkRegistrationTemplateBuffer());
+  it('parses valid workbook buffer without errors', async () => {
+    const buffer = await workbookBuffer([
+      {
+        'Sl. No.': 1,
+        'Full Name': 'Ananya Sharma',
+        'Email Address': 'ananya.sharma@example.com',
+        'Mobile Number': '9876543210',
+        'WhatsApp Number': '9876543210',
+        City: 'Bengaluru',
+      },
+      {
+        'Sl. No.': 2,
+        'Full Name': 'Karthik Raja',
+        'Email Address': 'karthik.raja@example.com',
+        'Mobile Number': '9845012345',
+        'WhatsApp Number': '9845012345',
+        City: 'Bengaluru',
+      },
+      {
+        'Sl. No.': 3,
+        'Full Name': 'Pooja Hegde',
+        'Email Address': 'pooja.hegde@example.com',
+        'Mobile Number': '9731298765',
+        'WhatsApp Number': '',
+        City: 'Mysuru',
+      },
+      {
+        'Sl. No.': 4,
+        'Full Name': 'Rohan Sen',
+        'Email Address': 'rohan.sen@example.com',
+        'Mobile Number': '9900112233',
+        'WhatsApp Number': '9900112233',
+        City: 'Bengaluru',
+      },
+      {
+        'Sl. No.': 5,
+        'Full Name': 'Sneha Rao',
+        'Email Address': 'sneha.rao@example.com',
+        'Mobile Number': '9880054321',
+        'WhatsApp Number': '9880054321',
+        City: 'Bengaluru',
+      },
+    ]);
+    const result = await parseBulkRegistrationXlsx(buffer);
     expect(result.valid).toBe(true);
     expect(result.validAttendeesCount).toBe(5);
     expect(result.errors).toHaveLength(0);
