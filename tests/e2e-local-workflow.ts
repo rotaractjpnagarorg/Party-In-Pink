@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { DEFAULT_PIP5_CONFIG } from '@pip/shared';
+import { DEFAULT_PIP5_CONFIG, getBulkPassPricePaise } from '@pip/shared';
 import { db } from '../firebase/functions/src/config/firebase.js';
 import { processPaymentApproval } from '../firebase/functions/src/approvals/paymentApprovalService.js';
 
@@ -111,9 +111,9 @@ async function main() {
       mobileNumber: '9876543212',
       whatsappSameAsMobile: true,
     },
-    participantCount: 5,
+    participantCount: 10,
   });
-  const attendees = Array.from({ length: 5 }, (_, index) => ({
+  const attendees = Array.from({ length: 10 }, (_, index) => ({
     slNo: index + 1,
     fullName: `Bulk Attendee ${index + 1}`,
     email: `bulk${index + 1}.e2e@example.com`,
@@ -124,17 +124,17 @@ async function main() {
     statusToken: bulk.statusToken,
     attendees,
   });
-  assert.equal(committed.participantCount, 5);
+  assert.equal(committed.participantCount, 10);
   const replay = await callable<any>('commitBulkAttendees', {
     statusToken: bulk.statusToken,
     attendees,
   });
-  assert.equal(replay.participantCount, 5);
+  assert.equal(replay.participantCount, 10);
   const bulkPayment = await callable<any>('createPaymentSession', {
     statusToken: bulk.statusToken,
     method: 'RTGS',
   });
-  assert.equal(bulkPayment.amountPaise, 5 * DEFAULT_PIP5_CONFIG.pricesPaise.bulkPass);
+  assert.equal(bulkPayment.amountPaise, 10 * getBulkPassPricePaise('COMPANY'));
 
   await new Promise((resolve) => setTimeout(resolve, 2_000));
   const [event, ticketJobs, emailJobs] = await Promise.all([
@@ -142,7 +142,7 @@ async function main() {
     db.collection('ticketJobs').get(),
     db.collection('emailJobs').get(),
   ]);
-  assert.equal(event.data()?.capacity.registeredCount, 6);
+  assert.equal(event.data()?.capacity.registeredCount, 11);
   assert.equal(event.data()?.capacity.confirmedCount, 1);
   assert.equal(ticketJobs.size, 1);
   assert.equal(ticketJobs.docs[0]?.data().orderId != null, true);

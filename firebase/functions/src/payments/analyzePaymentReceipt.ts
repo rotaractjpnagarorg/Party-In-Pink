@@ -14,7 +14,7 @@ const requestSchema = z.object({
 export const analyzePaymentReceipt = onCall(
   {
     region: 'asia-south1',
-    maxInstances: 10,
+    maxInstances: 50,
     enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
   },
   async (request) => {

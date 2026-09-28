@@ -103,7 +103,7 @@ export function isDuplicatePaymentReference(
 export const submitPaymentEvidence = onCall(
   {
     region: 'asia-south1',
-    maxInstances: 10,
+    maxInstances: 50,
     enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
     secrets: [SLACK_WEBHOOK_URL],
   },
@@ -210,19 +210,8 @@ export const submitPaymentEvidence = onCall(
         ocrExtractedAmount = ocrResult.extractedAmountPaise;
         ocrConfidence = ocrResult.confidence;
 
-        // Hard-reject amount mismatch detected by OCR
-        if (
-          typeof ocrExtractedAmount === 'number' &&
-          ocrExtractedAmount > 0 &&
-          ocrExtractedAmount !== session.amountPaise
-        ) {
-          const expected = `₹${(session.amountPaise / 100).toFixed(2)}`;
-          const found = `₹${(ocrExtractedAmount / 100).toFixed(2)}`;
-          throw new HttpsError(
-            'failed-precondition',
-            `Amount mismatch: uploaded screenshot shows ${found}, but this payment requires ${expected}. Submission blocked.`
-          );
-        }
+        // OCR amount variance does not hard-block submission; it is flagged and routed
+        // to REVIEW_REQUIRED for manual verification to prevent locking out paying users.
       } catch (ocrErr) {
         if (ocrErr instanceof HttpsError) throw ocrErr;
         console.warn(
@@ -318,11 +307,18 @@ export const submitPaymentEvidence = onCall(
         }
       }
 
-      const nextPaymentStatus = isDuplicateUtr
+      const isAmountMismatch =
+        typeof ocrExtractedAmount === 'number' &&
+        ocrExtractedAmount > 0 &&
+        ocrExtractedAmount !== session.amountPaise;
+
+      const needsReview = isDuplicateUtr || isAmountMismatch;
+
+      const nextPaymentStatus = needsReview
         ? PaymentStatuses.REVIEW_REQUIRED
         : PaymentStatuses.PAYMENT_SUBMITTED;
 
-      // Update payment session to PAYMENT_SUBMITTED
+      // Update payment session
       transaction.update(sessionRef, {
         status: nextPaymentStatus,
         normalizedUtr: normalizedUtr || null,
@@ -337,11 +333,11 @@ export const submitPaymentEvidence = onCall(
         updatedAt: nowIso,
       });
 
-      // Update Order or Donation to PAYMENT_SUBMITTED
+      // Update Order or Donation
       if (entityType === 'ORDER') {
         transaction.update(entityRef, {
           paymentStatus: nextPaymentStatus,
-          orderStatus: isDuplicateUtr
+          orderStatus: needsReview
             ? OrderStatuses.REVIEW_REQUIRED
             : OrderStatuses.PAYMENT_SUBMITTED,
           updatedAt: nowIso,

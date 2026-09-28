@@ -15,7 +15,7 @@ import {
 export const createSingleOrder = onCall(
   {
     region: 'asia-south1',
-    maxInstances: 10,
+    maxInstances: 50,
     enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
   },
   async (request) => {
@@ -32,7 +32,7 @@ export const createSingleOrder = onCall(
     await enforcePublicRateLimit(
       'create-single-order',
       getClientAddress(request.rawRequest),
-      60,
+      300,
       15 * 60 * 1000
     );
 

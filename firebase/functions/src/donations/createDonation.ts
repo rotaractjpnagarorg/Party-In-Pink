@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { z } from 'zod';
 import { db } from '../config/firebase.js';
+import { enforcePublicRateLimit, getClientAddress } from '../middleware/publicRateLimit.js';
 import { generateReference, generateStatusToken } from '../utils/reference.js';
 import {
   DEFAULT_EVENT_CODE,
@@ -55,7 +56,7 @@ const donationInputSchema = z.object({
 export const createDonation = onCall(
   {
     region: 'asia-south1',
-    maxInstances: 10,
+    maxInstances: 50,
     cors: true,
     enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
   },
@@ -69,6 +70,13 @@ export const createDonation = onCall(
     }
 
     const data = parseResult.data;
+    await enforcePublicRateLimit(
+      'create-donation',
+      getClientAddress(request.rawRequest),
+      300,
+      15 * 60 * 1000
+    );
+
     const nowIso = new Date().toISOString();
     const publicReference = generateReference(REFERENCE_PREFIXES.DONATION);
     const statusToken = generateStatusToken();

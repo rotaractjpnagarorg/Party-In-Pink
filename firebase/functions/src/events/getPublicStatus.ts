@@ -11,7 +11,7 @@ interface GetPublicStatusRequest {
 export const getPublicStatus = onCall(
   {
     region: 'asia-south1',
-    maxInstances: 10,
+    maxInstances: 50,
   },
   async (request): Promise<PublicOrderStatus> => {
     const data = (request.data || {}) as GetPublicStatusRequest;

@@ -120,17 +120,18 @@ describe('Firestore deny-by-default rules', () => {
 });
 
 describe('private receipt storage rules', () => {
-  it('allows bounded image creation but denies overwrite and anonymous read', async () => {
+  it('allows bounded image creation, seamless re-upload, and denies unauthorized read or invalid fileId', async () => {
     const publicStorage = testEnv.unauthenticatedContext().storage();
     const receipt = ref(publicStorage, 'receipts/payment-session-123/receipt');
     await assertSucceeds(
       uploadBytes(receipt, new Uint8Array([1, 2, 3]), { contentType: 'image/png' })
     );
-    await assertFails(uploadBytes(receipt, new Uint8Array([4, 5]), { contentType: 'image/png' }));
+    // Seamless re-upload enabled so users can replace mistakenly attached receipt screenshots
+    await assertSucceeds(uploadBytes(receipt, new Uint8Array([4, 5]), { contentType: 'image/png' }));
     await assertFails(getBytes(receipt));
     await assertFails(
       uploadBytes(
-        ref(publicStorage, 'receipts/nonexistent-session/receipt'),
+        ref(publicStorage, 'receipts/short/receipt'),
         new Uint8Array([1, 2, 3]),
         { contentType: 'image/png' }
       )

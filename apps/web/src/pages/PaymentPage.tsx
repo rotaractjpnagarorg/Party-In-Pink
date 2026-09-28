@@ -848,23 +848,23 @@ export const PaymentPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Amount Mismatch — hard block */}
+                {/* Amount Variance — Non-blocking manual review alert */}
                 {scanStatus === 'AMOUNT_MISMATCH' && (
-                  <div className="mt-2.5 p-3.5 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 text-xs space-y-1.5">
-                    <div className="flex items-center space-x-1.5 font-black text-rose-800">
-                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                      <span>Payment Amount Mismatch — Submission Blocked</span>
+                  <div className="mt-2.5 p-3.5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 text-xs space-y-1.5">
+                    <div className="flex items-center space-x-1.5 font-black text-amber-900">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Amount Variance Detected — Will Be Verified Manually</span>
                     </div>
-                    <p className="text-[11px] text-rose-700 leading-relaxed">
-                      Your screenshot shows an amount of{' '}
-                      <strong className="font-bold text-rose-900 bg-white px-1.5 py-0.5 rounded border border-rose-200">
-                        ₹{detectedAmountPaise ? (detectedAmountPaise / 100).toFixed(2) : 'incorrect'}
+                    <p className="text-[11px] text-amber-900 leading-relaxed">
+                      The automated scanner detected{' '}
+                      <strong className="font-bold text-amber-950 bg-white px-1.5 py-0.5 rounded border border-amber-200">
+                        ₹{detectedAmountPaise ? (detectedAmountPaise / 100).toFixed(2) : 'unrecognized'}
                       </strong>
-                      , but this transaction requires exactly{' '}
-                      <strong className="font-bold text-rose-900 bg-white px-1.5 py-0.5 rounded border border-rose-200">
+                      , while this transaction requires{' '}
+                      <strong className="font-bold text-amber-950 bg-white px-1.5 py-0.5 rounded border border-amber-200">
                         ₹{session?.amountPaise ? (session.amountPaise / 100).toFixed(2) : amountFormatted}
                       </strong>
-                      . Please pay the exact amount and upload the corresponding receipt.
+                      . If you transferred the correct amount, proceed with submitting below — our desk will manually confirm it against bank records.
                     </p>
                   </div>
                 )}
@@ -928,7 +928,6 @@ export const PaymentPage: React.FC = () => {
                   (!receiptFile && !utr.trim()) ||
                   timeLeft === 0 ||
                   scanStatus === 'DUPLICATE' ||
-                  scanStatus === 'AMOUNT_MISMATCH' ||
                   scanStatus === 'SCANNING'
                 }
                 className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-pip-600 via-pink-600 to-rose-500 hover:from-pip-700 hover:to-pink-700 text-white font-extrabold text-base shadow-lg shadow-pip-500/25 transition active:scale-98 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed group"
