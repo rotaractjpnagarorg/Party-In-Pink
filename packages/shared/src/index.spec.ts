@@ -15,8 +15,11 @@ describe('@pip/shared baseline', () => {
 
   it('correctly calculates complimentary passes for donations', () => {
     expect(getDonationComplimentaryPasses(50000)).toBe(0); // ₹500
+    expect(getDonationComplimentaryPasses(100000)).toBe(1); // ₹1,000 (Care Donor)
+    expect(getDonationComplimentaryPasses(250000)).toBe(1); // ₹2,500 (Aid Partner)
     expect(getDonationComplimentaryPasses(500000)).toBe(1); // ₹5,000 (Wellwisher)
     expect(getDonationComplimentaryPasses(750000)).toBe(1); // ₹7,500
+    expect(getDonationComplimentaryPasses(999900)).toBe(1); // ₹9,999
     expect(getDonationComplimentaryPasses(1000000)).toBe(2); // ₹10,000 (Silver)
     expect(getDonationComplimentaryPasses(1500000)).toBe(5); // ₹15,000 (Gold)
     expect(getDonationComplimentaryPasses(2000000)).toBe(7); // ₹20,000 (Platinum)

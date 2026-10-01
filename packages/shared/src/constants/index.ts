@@ -126,7 +126,7 @@ export function getDonationComplimentaryPasses(amountPaise: number): number {
   if (amountPaise >= 2000000) return 7;
   if (amountPaise >= 1500000) return 5;
   if (amountPaise >= 1000000) return 2;
-  if (amountPaise >= 500000) return 1;
+  if (amountPaise >= 100000) return 1;
   return 0;
 }
 

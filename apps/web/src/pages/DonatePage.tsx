@@ -98,18 +98,6 @@ const PRESET_AMOUNTS = [
     label: '1 Complimentary Pass • Wellwisher Certificate & Recognition',
     passes: 1,
   },
-  {
-    amount: 2500,
-    tier: 'Aid Partner',
-    label: 'Patient Treatment & Hospital Aid',
-    passes: 0,
-  },
-  {
-    amount: 1000,
-    tier: 'Care Donor',
-    label: 'Cancer Screening & Mammogram Support',
-    passes: 0,
-  },
 ];
 
 const ORGANIZERS = [
