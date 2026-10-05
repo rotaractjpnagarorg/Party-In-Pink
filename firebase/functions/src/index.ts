@@ -37,6 +37,7 @@ export { slackInteractions } from './integrations/slack/slackInteractions.js';
 export { adminApprovePayment } from './admin/adminApprovePayment.js';
 export { adminGetReceiptUrl } from './admin/adminGetReceiptUrl.js';
 export { adminUpdateContact } from './admin/adminUpdateContact.js';
+export { adminRecordDonation } from './admin/adminRecordDonation.js';
 
 // Ticketing Fulfilment Worker & Retry
 export { onTicketJobCreated, retryTicketJobs, adminRetryTicket } from './tickets/ticketWorker.js';
