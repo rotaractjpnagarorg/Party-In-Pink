@@ -37,7 +37,9 @@ export const adminUpdateContact = onCall({ region: 'asia-south1', cors: true }, 
   const { entityType, entityId, attendeeId, fullName, email, mobileNumber } = parsed.data;
   const admin = await requireAdminRole(
     request,
-    entityType === 'DONATION' ? ['SUPER_ADMIN'] : ['SUPER_ADMIN', 'REGISTRATION_ADMIN']
+    entityType === 'DONATION'
+      ? ['SUPER_ADMIN', 'PAYMENT_APPROVER', 'FINANCE_VIEW']
+      : ['SUPER_ADMIN', 'REGISTRATION_ADMIN', 'TICKET_ADMIN']
   );
   const db = getFirestore();
   const entityRef = db.collection(entityType === 'ORDER' ? 'orders' : 'donations').doc(entityId);

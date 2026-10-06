@@ -62,9 +62,10 @@ export const Footer: React.FC = () => {
               <li>
                 <Link
                   to="/admin"
-                  className="text-slate-500 hover:text-slate-400 transition text-xs"
+                  className="inline-flex items-center space-x-1.5 text-slate-400 hover:text-pip-400 transition text-sm font-medium pt-1"
                 >
-                  Admin Portal
+                  <ShieldCheck className="w-4 h-4 text-pip-500" />
+                  <span>Admin Operations Portal</span>
                 </Link>
               </li>
             </ul>

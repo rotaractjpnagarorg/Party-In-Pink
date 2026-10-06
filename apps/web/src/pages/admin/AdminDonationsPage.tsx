@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../services/firebase.js';
@@ -14,9 +14,10 @@ import {
   Loader2,
   Heart,
   Banknote,
-  QrCode,
   Building2,
   Ticket,
+  RefreshCw,
+  Check,
 } from 'lucide-react';
 import { escapeCsvCell, getDonationComplimentaryPasses } from '@pip/shared';
 
@@ -31,6 +32,8 @@ interface DonationRow {
   anonymousPublicly: boolean;
   paymentStatus: string;
   paymentMethod?: string;
+  complimentaryPassesCount?: number;
+  donorOrderId?: string;
   createdAt: string;
 }
 
@@ -38,48 +41,70 @@ export const AdminDonationsPage: React.FC = () => {
   const [donations, setDonations] = useState<DonationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [resending, setResending] = useState<string | null>(null);
-  const [updating, setUpdating] = useState<string | null>(null);
+  const [viewFilter, setViewFilter] = useState<'CONFIRMED' | 'ALL'>('CONFIRMED');
+
+  // Resend / Action states
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Edit Donor Modal state
+  const [editingDonation, setEditingDonation] = useState<DonationRow | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editMobile, setEditMobile] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Offline / Direct donation modal states
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [donorName, setDonorName] = useState('');
-  const [donorEmail, setDonorEmail] = useState('');
-  const [donorMobile, setDonorMobile] = useState('');
-  const [amountRupees, setAmountRupees] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'DIRECT_UPI' | 'CASH' | 'BANK_TRANSFER'>('DIRECT_UPI');
-  const [referenceOrNotes, setReferenceOrNotes] = useState('');
-  const [pan, setPan] = useState('');
-  const [organisationName, setOrganisationName] = useState('');
-  const [sendThankYouEmail, setSendThankYouEmail] = useState(true);
-  const [allocatePasses, setAllocatePasses] = useState(true);
+  const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
+  const [newDonorName, setNewDonorName] = useState('');
+  const [newDonorEmail, setNewDonorEmail] = useState('');
+  const [newDonorMobile, setNewDonorMobile] = useState('');
+  const [newAmountRupees, setNewAmountRupees] = useState('');
+  const [newPaymentMethod, setNewPaymentMethod] = useState<'DIRECT_UPI' | 'CASH' | 'BANK_TRANSFER'>('DIRECT_UPI');
+  const [newReferenceOrNotes, setNewReferenceOrNotes] = useState('');
+  const [newPan, setNewPan] = useState('');
+  const [newOrganisationName, setNewOrganisationName] = useState('');
+  const [newSendThankYouEmail, setNewSendThankYouEmail] = useState(true);
+  const [newAllocatePasses, setNewAllocatePasses] = useState(true);
 
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [submittingRecord, setSubmittingRecord] = useState(false);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const [recordSuccess, setRecordSuccess] = useState<string | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((curr) => (curr?.message === message ? null : curr));
+    }, 4500);
+  };
 
   const loadDonations = async () => {
+    setLoading(true);
     try {
       const q = query(collection(db, 'donations'), orderBy('createdAt', 'desc'));
       const snap = await getDocs(q);
-      setDonations(
-        snap.docs.map((doc) => {
-          const d = doc.data();
-          return {
-            id: doc.id,
-            publicReference: d.publicReference || doc.id.slice(0, 10),
-            donorName: d.donor?.fullName || '—',
-            donorEmail: d.donor?.email || '—',
-            donorMobile: d.donor?.mobileNumber || '—',
-            amountPaise: d.amountPaise || 0,
-            pan: d.pan || undefined,
-            anonymousPublicly: d.isAnonymousPublicly || false,
-            paymentStatus: d.paymentStatus || 'CREATED',
-            paymentMethod: d.paymentMethod || undefined,
-            createdAt: d.createdAt || '',
-          };
-        })
-      );
+      const rows: DonationRow[] = snap.docs.map((doc) => {
+        const d = doc.data();
+        const amountPaise = d.amountPaise || 0;
+        const defaultPasses = getDonationComplimentaryPasses(amountPaise);
+        return {
+          id: doc.id,
+          publicReference: d.publicReference || doc.id.slice(0, 10),
+          donorName: d.donor?.fullName || '—',
+          donorEmail: d.donor?.email || '—',
+          donorMobile: d.donor?.mobileNumber || '—',
+          amountPaise,
+          pan: d.pan || undefined,
+          anonymousPublicly: d.isAnonymousPublicly || false,
+          paymentStatus: d.paymentStatus || 'CREATED',
+          paymentMethod: d.paymentMethod || undefined,
+          complimentaryPassesCount: d.complimentaryPassesCount !== undefined ? d.complimentaryPassesCount : defaultPasses,
+          donorOrderId: d.donorOrderId || (d.complimentaryOrderRef ? d.complimentaryOrderRef : undefined),
+          createdAt: d.createdAt || '',
+        };
+      });
+      setDonations(rows);
     } catch (err) {
       console.error('[Admin Donations] Error loading:', err);
     } finally {
@@ -91,197 +116,304 @@ export const AdminDonationsPage: React.FC = () => {
     loadDonations();
   }, []);
 
-  const updateEmail = async (donation: DonationRow) => {
-    const email = window.prompt('Donor email address', donation.donorEmail)?.trim();
-    if (!email || email === donation.donorEmail) return;
-    setUpdating(donation.id);
+  // Resend Thank You / Confirmation Email
+  const handleResend = async (donation: DonationRow) => {
+    setResendingId(donation.id);
     try {
-      await httpsCallable(
-        functions,
-        'adminUpdateContact'
-      )({ entityType: 'DONATION', entityId: donation.id, email });
-      setDonations((current) =>
-        current.map((item) =>
-          item.id === donation.id ? { ...item, donorEmail: email.toLowerCase() } : item
-        )
-      );
-    } catch (error) {
-      console.error('[Admin Donations] Contact update failed:', error);
-      window.alert('The email address could not be updated. Check the address and your admin role.');
-    } finally {
-      setUpdating(null);
-    }
-  };
-
-  const resendThankYou = async (donationId: string) => {
-    setResending(donationId);
-    try {
-      await httpsCallable(
-        functions,
-        'adminResendConfirmation'
-      )({
+      const fn = httpsCallable(functions, 'adminResendConfirmation');
+      await fn({
         entityType: 'DONATION',
-        entityId: donationId,
+        entityId: donation.id,
       });
-      window.alert('Thank-you email has been queued and sent to the donor.');
-    } catch (error) {
+      showToast(`Thank-you email & passes resent to ${donation.donorEmail}!`);
+    } catch (error: any) {
       console.error('[Admin Donations] Resend failed:', error);
-      window.alert('Failed to send thank-you email. Please check your admin privileges.');
+      showToast(error?.message || 'Failed to resend confirmation email.', 'error');
     } finally {
-      setResending(null);
+      setResendingId(null);
     }
   };
 
-  const parsedAmountNum = parseFloat(amountRupees) || 0;
-  const computedPasses = getDonationComplimentaryPasses(Math.round(parsedAmountNum * 100));
-
-  const resetForm = () => {
-    setDonorName('');
-    setDonorEmail('');
-    setDonorMobile('');
-    setAmountRupees('');
-    setPaymentMethod('DIRECT_UPI');
-    setReferenceOrNotes('');
-    setPan('');
-    setOrganisationName('');
-    setSendThankYouEmail(true);
-    setAllocatePasses(true);
-    setFormError(null);
-    setFormSuccess(null);
+  // Open Edit Details Modal
+  const openEditModal = (donation: DonationRow) => {
+    setEditingDonation(donation);
+    setEditName(donation.donorName === '—' ? '' : donation.donorName);
+    setEditEmail(donation.donorEmail === '—' ? '' : donation.donorEmail);
+    setEditMobile(donation.donorMobile === '—' ? '' : donation.donorMobile);
+    setEditError(null);
   };
 
-  const handleRecordDonation = async (e: React.FormEvent) => {
+  // Save Edit Details
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError(null);
-    setFormSuccess(null);
+    if (!editingDonation) return;
+    setEditError(null);
 
-    const trimmedName = donorName.trim();
-    const trimmedEmail = donorEmail.trim().toLowerCase();
-    const amountVal = parseFloat(amountRupees);
+    const trimmedName = editName.trim();
+    const trimmedEmail = editEmail.trim().toLowerCase();
+    const trimmedMobile = editMobile.trim();
 
     if (!trimmedName || trimmedName.length < 2) {
-      setFormError('Please provide a valid donor name (min 2 characters).');
+      setEditError('Please enter a valid donor name (min 2 characters).');
       return;
     }
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setFormError('Please enter a valid donor email address to send acknowledgement.');
+      setEditError('Please enter a valid donor email address.');
       return;
     }
-    if (isNaN(amountVal) || amountVal <= 0) {
-      setFormError('Please enter a valid donation amount in Rupees (minimum ₹1).');
-      return;
-    }
-    if (donorMobile.trim() && !/^[6-9]\d{9}$/.test(donorMobile.trim())) {
-      setFormError('Mobile number must be a valid 10-digit Indian number starting with 6-9.');
-      return;
-    }
-    if (pan.trim() && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan.trim().toUpperCase())) {
-      setFormError('PAN must be in standard format (e.g., ABCDE1234F).');
+    if (trimmedMobile && !/^[6-9]\d{9}$/.test(trimmedMobile)) {
+      setEditError('Mobile number must be a valid 10-digit Indian number.');
       return;
     }
 
-    setSubmitting(true);
+    setSavingEdit(true);
+    try {
+      const updateFn = httpsCallable(functions, 'adminUpdateContact');
+      await updateFn({
+        entityType: 'DONATION',
+        entityId: editingDonation.id,
+        fullName: trimmedName,
+        email: trimmedEmail,
+        mobileNumber: trimmedMobile || undefined,
+      });
+
+      setDonations((curr) =>
+        curr.map((d) =>
+          d.id === editingDonation.id
+            ? {
+                ...d,
+                donorName: trimmedName,
+                donorEmail: trimmedEmail,
+                donorMobile: trimmedMobile || '—',
+              }
+            : d
+        )
+      );
+
+      showToast(`Updated contact details for ${trimmedName} successfully!`);
+      setEditingDonation(null);
+    } catch (err: any) {
+      console.error('[Admin Donations] Save edit error:', err);
+      setEditError(err?.message || 'Failed to update donor details.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  // Offline Donation Submission
+  const handleRecordDonation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecordError(null);
+    setRecordSuccess(null);
+
+    const trimmedName = newDonorName.trim();
+    const trimmedEmail = newDonorEmail.trim().toLowerCase();
+    const amountVal = parseFloat(newAmountRupees);
+
+    if (!trimmedName || trimmedName.length < 2) {
+      setRecordError('Please provide a valid donor name (min 2 characters).');
+      return;
+    }
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setRecordError('Please enter a valid donor email address.');
+      return;
+    }
+    if (isNaN(amountVal) || amountVal <= 0) {
+      setRecordError('Please enter a valid donation amount in Rupees (minimum ₹1).');
+      return;
+    }
+    if (newDonorMobile.trim() && !/^[6-9]\d{9}$/.test(newDonorMobile.trim())) {
+      setRecordError('Mobile number must be a valid 10-digit Indian number.');
+      return;
+    }
+    if (newPan.trim() && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(newPan.trim().toUpperCase())) {
+      setRecordError('PAN must be in standard format (e.g., ABCDE1234F).');
+      return;
+    }
+
+    setSubmittingRecord(true);
     try {
       const recordFn = httpsCallable(functions, 'adminRecordDonation');
       const response = await recordFn({
         fullName: trimmedName,
         email: trimmedEmail,
-        mobileNumber: donorMobile.trim() || undefined,
+        mobileNumber: newDonorMobile.trim() || undefined,
         amountRupees: amountVal,
-        paymentMethod,
-        referenceOrNotes: referenceOrNotes.trim() || undefined,
-        pan: pan.trim().toUpperCase() || undefined,
-        organisationName: organisationName.trim() || undefined,
-        sendThankYouEmail,
-        allocatePasses,
+        paymentMethod: newPaymentMethod,
+        referenceOrNotes: newReferenceOrNotes.trim() || undefined,
+        pan: newPan.trim().toUpperCase() || undefined,
+        organisationName: newOrganisationName.trim() || undefined,
+        sendThankYouEmail: newSendThankYouEmail,
+        allocatePasses: newAllocatePasses,
       });
 
       const data = response.data as any;
-      setFormSuccess(
+      setRecordSuccess(
         `Recorded successfully! Ref: ${data.publicReference}. ${
           data.emailSent ? 'Thank-you email has been delivered to ' + trimmedEmail + '.' : ''
         }`
       );
       await loadDonations();
       setTimeout(() => {
-        resetForm();
-        setIsModalOpen(false);
-      }, 2500);
+        setIsRecordModalOpen(false);
+        setNewDonorName('');
+        setNewDonorEmail('');
+        setNewDonorMobile('');
+        setNewAmountRupees('');
+        setNewReferenceOrNotes('');
+        setNewPan('');
+        setNewOrganisationName('');
+        setRecordSuccess(null);
+      }, 2000);
     } catch (err: any) {
       console.error('[Admin Record Donation] Error:', err);
-      setFormError(err?.message || 'Failed to record donation. Please verify your admin role.');
+      setRecordError(err?.message || 'Failed to record donation.');
     } finally {
-      setSubmitting(false);
+      setSubmittingRecord(false);
     }
   };
 
-  const filtered = donations.filter((d) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      d.publicReference.toLowerCase().includes(term) ||
-      d.donorName.toLowerCase().includes(term) ||
-      d.donorEmail.toLowerCase().includes(term)
-    );
-  });
+  // Filtered list: ONLY confirmed donations by default
+  const filteredDonations = useMemo(() => {
+    return donations.filter((d) => {
+      // Primary constraint: Confirmed donations only
+      if (viewFilter === 'CONFIRMED' && d.paymentStatus !== 'VERIFIED') return false;
 
-  const exportCSV = () => {
-    const header = 'Reference,Donor,Email,Mobile,Amount,PAN,Anonymous,Payment Method,Payment Status,Created\n';
-    const rows = filtered.map((d) =>
-      [
-        d.publicReference,
-        `"${d.donorName}"`,
-        d.donorEmail,
-        d.donorMobile,
-        (d.amountPaise / 100).toFixed(2),
-        d.pan || '',
-        d.anonymousPublicly,
-        d.paymentMethod || 'ONLINE',
-        d.paymentStatus,
-        d.createdAt,
-      ]
-        .map(escapeCsvCell)
-        .join(',')
-    );
-    const blob = new Blob([header + rows.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `pip5_donations_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      return (
+        d.donorName.toLowerCase().includes(term) ||
+        d.donorEmail.toLowerCase().includes(term) ||
+        d.donorMobile.toLowerCase().includes(term) ||
+        d.publicReference.toLowerCase().includes(term) ||
+        (d.pan && d.pan.toLowerCase().includes(term))
+      );
+    });
+  }, [donations, viewFilter, searchTerm]);
+
+  // Aggregate Metrics for Confirmed Donations
+  const metrics = useMemo(() => {
+    const verified = donations.filter((d) => d.paymentStatus === 'VERIFIED');
+    const totalAmount = verified.reduce((sum, d) => sum + d.amountPaise, 0);
+    const totalPasses = verified.reduce((sum, d) => sum + (d.complimentaryPassesCount || 0), 0);
+    const avgAmount = verified.length > 0 ? Math.round(totalAmount / verified.length) : 0;
+    return {
+      totalAmount,
+      donorCount: verified.length,
+      totalPasses,
+      avgAmount,
+      totalDrafts: donations.length - verified.length,
+    };
+  }, [donations]);
+
+  // CSV Export
+  const handleExportCsv = () => {
+    const headers = [
+      'Public Reference',
+      'Donor Name',
+      'Email',
+      'Mobile',
+      'Amount (INR)',
+      'Complimentary Passes',
+      'PAN',
+      'Payment Method',
+      'Payment Status',
+      'Created Date',
+    ];
+
+    const rows = filteredDonations.map((d) => [
+      escapeCsvCell(d.publicReference),
+      escapeCsvCell(d.donorName),
+      escapeCsvCell(d.donorEmail),
+      escapeCsvCell(d.donorMobile),
+      escapeCsvCell((d.amountPaise / 100).toString()),
+      escapeCsvCell((d.complimentaryPassesCount || 0).toString()),
+      escapeCsvCell(d.pan || ''),
+      escapeCsvCell(d.paymentMethod || 'UPI'),
+      escapeCsvCell(d.paymentStatus),
+      escapeCsvCell(d.createdAt),
+    ]);
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `PiP5_Confirmed_Donations_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin w-8 h-8 border-4 border-pip-500 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
+  const parsedAmountNum = parseFloat(newAmountRupees) || 0;
+  const computedPasses = getDonationComplimentaryPasses(Math.round(parsedAmountNum * 100));
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Donations</h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">{donations.length} total contributions</p>
-        </div>
-        <div className="flex items-center gap-2.5">
+    <div className="space-y-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 flex items-center space-x-3 px-4 py-3 rounded-xl shadow-xl border animate-in fade-in slide-in-from-top-2 duration-200 ${
+            toast.type === 'success'
+              ? 'bg-emerald-950/90 text-emerald-200 border-emerald-800'
+              : 'bg-red-950/90 text-red-200 border-red-800'
+          }`}
+        >
+          {toast.type === 'success' ? (
+            <Check className="w-5 h-5 text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+          )}
+          <span className="text-sm font-medium">{toast.message}</span>
           <button
-            type="button"
-            onClick={() => {
-              resetForm();
-              setIsModalOpen(true);
-            }}
-            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-pip-600 to-pink-500 hover:from-pip-500 hover:to-pink-400 text-sm font-semibold text-white shadow-lg shadow-pip-500/20 transition-all cursor-pointer"
+            onClick={() => setToast(null)}
+            className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
+              <Heart className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white tracking-tight">Confirmed Donations</h1>
+              <p className="text-sm text-slate-400">
+                Verified donor contributions supporting Sri Shankara Cancer Foundation.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={loadDonations}
+            disabled={loading}
+            className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition border border-slate-700 disabled:opacity-50"
+            title="Refresh donations"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+
+          <button
+            onClick={() => setIsRecordModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm shadow-md transition"
           >
             <PlusCircle className="w-4 h-4" />
-            <span>Record Cash / Direct UPI</span>
+            <span>Record Offline</span>
           </button>
+
           <button
-            onClick={exportCSV}
-            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-300 hover:text-white hover:border-slate-600 transition-all cursor-pointer"
+            onClick={handleExportCsv}
+            disabled={loading || filteredDonations.length === 0}
+            className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-pip-600 to-pink-500 hover:from-pip-700 hover:to-pink-600 text-white font-semibold text-sm shadow-md transition disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
             <span>Export CSV</span>
@@ -289,380 +421,518 @@ export const AdminDonationsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="relative w-full sm:max-w-md mb-5">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search by reference, donor name, email…"
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-pip-500 focus:border-transparent outline-none"
-        />
-      </div>
+      {/* Metric Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center justify-between text-slate-400 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Total Verified Funds</span>
+            <Banknote className="w-4 h-4 text-emerald-400" />
+          </div>
+          <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            ₹{(metrics.totalAmount / 100).toLocaleString('en-IN')}
+          </p>
+          <p className="text-xs text-emerald-400/80 mt-1">Confirmed & Realized</p>
+        </div>
 
-      <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-700/50">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase">
-                  Reference
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase">
-                  Donor
-                </th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase">
-                  Amount
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase">
-                  Mode
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase">
-                  PAN
-                </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase">
-                  Status
-                </th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase">
-                  Date
-                </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/30">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-500">
-                    No donations found
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((d) => (
-                  <tr key={d.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs text-pip-400 font-medium">
-                      {d.publicReference}
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-white font-medium">{d.donorName}</p>
-                      <p className="text-xs text-slate-500">{d.donorEmail}</p>
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-300">
-                      ₹{(d.amountPaise / 100).toLocaleString('en-IN')}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center text-xs font-medium text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded-md border border-slate-700/50">
-                        {d.paymentMethod ? d.paymentMethod.replace(/_/g, ' ') : 'ONLINE'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-400">{d.pan || '—'}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span
-                        className={`inline-block px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                          d.paymentStatus === 'VERIFIED'
-                            ? 'bg-emerald-500/15 text-emerald-300'
-                            : d.paymentStatus === 'PAYMENT_SUBMITTED'
-                              ? 'bg-amber-500/15 text-amber-300'
-                              : 'bg-slate-500/15 text-slate-400'
-                        }`}
-                      >
-                        {d.paymentStatus.replace(/_/g, ' ')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-xs text-slate-500">
-                      {d.createdAt
-                        ? new Date(d.createdAt).toLocaleDateString('en-IN', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: '2-digit',
-                          })
-                        : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => updateEmail(d)}
-                          disabled={updating === d.id}
-                          className="p-1.5 rounded-lg bg-slate-500/10 text-slate-300 hover:bg-slate-500/20 disabled:opacity-50"
-                          title="Correct donor email"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        {d.paymentStatus === 'VERIFIED' && (
-                          <button
-                            type="button"
-                            onClick={() => resendThankYou(d.id)}
-                            disabled={resending === d.id}
-                            className="p-1.5 rounded-lg bg-pip-500/10 text-pip-400 hover:bg-pip-500/20 disabled:opacity-50"
-                            title="Resend donation thank-you email"
-                          >
-                            <Mail className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center justify-between text-slate-400 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Confirmed Donors</span>
+            <Heart className="w-4 h-4 text-rose-400" />
+          </div>
+          <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            {metrics.donorCount}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">Individual & Rotary sponsors</p>
+        </div>
+
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center justify-between text-slate-400 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Complimentary Passes</span>
+            <Ticket className="w-4 h-4 text-pink-400" />
+          </div>
+          <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            {metrics.totalPasses}
+          </p>
+          <p className="text-xs text-pink-400/80 mt-1">Issued to donors</p>
+        </div>
+
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center justify-between text-slate-400 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Average Contribution</span>
+            <Building2 className="w-4 h-4 text-purple-400" />
+          </div>
+          <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            ₹{(metrics.avgAmount / 100).toLocaleString('en-IN')}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">Per confirmed supporter</p>
         </div>
       </div>
 
-      {/* Record Direct / Offline Donation Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-xl my-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-7 text-white">
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search by donor name, email, mobile, ref, PAN..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-pip-500"
+          />
+        </div>
+
+        <div className="flex items-center space-x-1.5">
+          <button
+            onClick={() => setViewFilter('CONFIRMED')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              viewFilter === 'CONFIRMED'
+                ? 'bg-rose-600 text-white shadow-sm'
+                : 'bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            Confirmed Donations ({metrics.donorCount})
+          </button>
+          <button
+            onClick={() => setViewFilter('ALL')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              viewFilter === 'ALL'
+                ? 'bg-slate-700 text-white shadow-sm'
+                : 'bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            All / Drafts ({donations.length})
+          </button>
+        </div>
+      </div>
+
+      {/* Table of Confirmed Donations */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-24 space-y-3">
+          <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
+          <p className="text-sm text-slate-400">Loading verified donations roster…</p>
+        </div>
+      ) : filteredDonations.length === 0 ? (
+        <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-12 text-center">
+          <Heart className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+          <h3 className="text-base font-semibold text-white">No confirmed donations found</h3>
+          <p className="text-xs text-slate-400 mt-1">
+            {searchTerm ? 'Try adjusting your search criteria.' : 'Verified donations will appear here.'}
+          </p>
+        </div>
+      ) : (
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-800/80 border-b border-slate-700/80 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <tr>
+                  <th className="px-4 py-3.5">Donor / Supporter</th>
+                  <th className="px-4 py-3.5">Amount & Passes</th>
+                  <th className="px-4 py-3.5">Reference & Method</th>
+                  <th className="px-4 py-3.5">Status</th>
+                  <th className="px-4 py-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {filteredDonations.map((donation) => (
+                  <tr key={donation.id} className="hover:bg-slate-800/40 transition">
+                    <td className="px-4 py-3.5">
+                      <div className="font-semibold text-white text-sm flex items-center space-x-2">
+                        <span>{donation.donorName}</span>
+                        {donation.pan && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                            PAN: {donation.pan}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-400 flex flex-wrap gap-x-2 mt-0.5">
+                        <span>{donation.donorEmail}</span>
+                        {donation.donorMobile !== '—' && (
+                          <>
+                            <span className="text-slate-600">•</span>
+                            <span>{donation.donorMobile}</span>
+                          </>
+                        )}
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3.5">
+                      <div className="font-bold text-white text-base">
+                        ₹{(donation.amountPaise / 100).toLocaleString('en-IN')}
+                      </div>
+                      {(donation.complimentaryPassesCount || 0) > 0 ? (
+                        <div className="inline-flex items-center space-x-1 text-[11px] font-semibold text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-md border border-pink-500/20 mt-1">
+                          <Ticket className="w-3 h-3" />
+                          <span>{donation.complimentaryPassesCount} Passes Issued</span>
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-slate-500 mt-0.5">Direct Donation</div>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3.5">
+                      <div className="font-mono text-xs font-semibold text-slate-300">
+                        {donation.publicReference}
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        {donation.paymentMethod?.replace(/_/g, ' ') || 'UPI Online'}
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3.5">
+                      {donation.paymentStatus === 'VERIFIED' ? (
+                        <div className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Verified</span>
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-700 text-slate-300">
+                          {donation.paymentStatus}
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3.5 text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        {/* Edit Donor Details */}
+                        <button
+                          onClick={() => openEditModal(donation)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                          title="Edit Donor Details"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+
+                        {/* Trigger / Resend Thank You Email */}
+                        <button
+                          onClick={() => handleResend(donation)}
+                          disabled={resendingId === donation.id}
+                          className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition border border-slate-700 disabled:opacity-50"
+                          title="Resend Thank You & Passes Email"
+                        >
+                          {resendingId === donation.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-400" />
+                          ) : (
+                            <Mail className="w-3.5 h-3.5 text-slate-400" />
+                          )}
+                          <span className="hidden sm:inline">Resend Email</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Donor Modal */}
+      {editingDonation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
             <button
-              type="button"
-              onClick={() => {
-                if (!submitting) {
-                  setIsModalOpen(false);
-                  resetForm();
-                }
-              }}
-              className="absolute top-5 right-5 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              onClick={() => setEditingDonation(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="flex items-center space-x-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-pip-500/20 border border-pip-500/30 flex items-center justify-center text-pip-400">
-                <Heart className="w-5 h-5 fill-pip-400/20" />
+              <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
+                <Pencil className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-                  Record Direct / Offline Donation
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Log direct UPI, Cash, or Bank transfers and send thank-you emails automatically
+                <h3 className="text-lg font-bold text-white">Edit Donor Details</h3>
+                <p className="text-xs text-slate-400 font-mono">
+                  Ref: {editingDonation.publicReference}
                 </p>
               </div>
             </div>
 
-            {formError && (
-              <div className="mb-5 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start space-x-2.5 text-xs sm:text-sm text-red-300">
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                <span>{formError}</span>
+            {editError && (
+              <div className="p-3 mb-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{editError}</span>
               </div>
             )}
 
-            {formSuccess && (
-              <div className="mb-5 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-start space-x-2.5 text-xs sm:text-sm text-emerald-300">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span>{formSuccess}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleRecordDonation} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Donor Full Name <span className="text-pip-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={donorName}
-                    onChange={(e) => setDonorName(e.target.value)}
-                    placeholder="e.g. Ramesh Kumar"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-pip-500 focus:border-transparent outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Donor Email Address <span className="text-pip-400">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={donorEmail}
-                    onChange={(e) => setDonorEmail(e.target.value)}
-                    placeholder="donor@example.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-pip-500 focus:border-transparent outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Donation Amount (₹) <span className="text-pip-400">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    step="1"
-                    value={amountRupees}
-                    onChange={(e) => setAmountRupees(e.target.value)}
-                    placeholder="e.g. 5000"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-pip-500 focus:border-transparent outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Mobile Number (Optional)
-                  </label>
-                  <input
-                    type="tel"
-                    maxLength={10}
-                    value={donorMobile}
-                    onChange={(e) => setDonorMobile(e.target.value)}
-                    placeholder="10-digit number"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-pip-500 focus:border-transparent outline-none"
-                  />
-                </div>
-              </div>
-
+            <form onSubmit={handleSaveEdit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Payment Method <span className="text-pip-400">*</span>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Donor Full Name *
                 </label>
-                <div className="grid grid-cols-3 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('DIRECT_UPI')}
-                    className={`flex items-center justify-center space-x-2 py-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
-                      paymentMethod === 'DIRECT_UPI'
-                        ? 'bg-pip-500/20 border-pip-500 text-pip-300'
-                        : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <QrCode className="w-3.5 h-3.5" />
-                    <span>Direct UPI</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('CASH')}
-                    className={`flex items-center justify-center space-x-2 py-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
-                      paymentMethod === 'CASH'
-                        ? 'bg-pip-500/20 border-pip-500 text-pip-300'
-                        : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Banknote className="w-3.5 h-3.5" />
-                    <span>Cash</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('BANK_TRANSFER')}
-                    className={`flex items-center justify-center space-x-2 py-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
-                      paymentMethod === 'BANK_TRANSFER'
-                        ? 'bg-pip-500/20 border-pip-500 text-pip-300'
-                        : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Building2 className="w-3.5 h-3.5" />
-                    <span>Bank/IMPS</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    UTR / Reference / Notes
-                  </label>
-                  <input
-                    type="text"
-                    value={referenceOrNotes}
-                    onChange={(e) => setReferenceOrNotes(e.target.value)}
-                    placeholder="e.g. 12-digit UTR or 'Handed in cash'"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-pip-500 focus:border-transparent outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    PAN Number (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    maxLength={10}
-                    value={pan}
-                    onChange={(e) => setPan(e.target.value.toUpperCase())}
-                    placeholder="e.g. ABCDE1234F"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/60 border border-slate-700/60 text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-pip-500 focus:border-transparent outline-none font-mono uppercase"
-                  />
-                </div>
-              </div>
-
-              {/* Complimentary Passes live badge */}
-              <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/40 flex items-center justify-between text-xs">
-                <div className="flex items-center space-x-2 text-slate-300">
-                  <Ticket className="w-4 h-4 text-pip-400" />
-                  <span>
-                    {computedPasses > 0 ? (
-                      <>
-                        Qualifies for{' '}
-                        <strong className="text-pip-300 font-bold">
-                          {computedPasses} complimentary event pass{computedPasses > 1 ? 'es' : ''}
-                        </strong>
-                      </>
-                    ) : (
-                      'No passes included (contributions under ₹1,000)'
-                    )}
-                  </span>
-                </div>
-                {computedPasses > 0 && (
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={allocatePasses}
-                      onChange={(e) => setAllocatePasses(e.target.checked)}
-                      className="rounded border-slate-700 text-pip-500 focus:ring-pip-500"
-                    />
-                    <span className="text-xs text-slate-400">Issue passes</span>
-                  </label>
-                )}
-              </div>
-
-              {/* Email Acknowledgement Toggle */}
-              <div className="p-3 rounded-xl bg-pip-950/30 border border-pip-800/30 flex items-center justify-between text-xs">
-                <div className="flex items-center space-x-2 text-slate-300">
-                  <Mail className="w-4 h-4 text-pip-400" />
-                  <span>Trigger official Thank-You email to donor upon saving</span>
-                </div>
                 <input
-                  type="checkbox"
-                  checked={sendThankYouEmail}
-                  onChange={(e) => setSendThankYouEmail(e.target.checked)}
-                  className="rounded border-slate-700 text-pip-500 focus:ring-pip-500 cursor-pointer"
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  required
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  placeholder="e.g. Rtn. Ramesh Kumar"
                 />
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  required
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  placeholder="donor@example.com"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Updates donor record and thank-you recipient.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Mobile Number (Optional)
+                </label>
+                <input
+                  type="tel"
+                  value={editMobile}
+                  onChange={(e) => setEditMobile(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  placeholder="10-digit Indian mobile number"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end space-x-3">
                 <button
                   type="button"
-                  disabled={submitting}
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    resetForm();
-                  }}
-                  className="px-4 py-2.5 rounded-xl border border-slate-700 text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                  onClick={() => setEditingDonation(null)}
+                  disabled={savingEdit}
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
-                  className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-pip-600 to-pink-500 hover:from-pip-500 hover:to-pink-400 text-sm font-semibold text-white shadow-lg shadow-pip-500/20 disabled:opacity-50 transition-all cursor-pointer"
+                  disabled={savingEdit}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-rose-600 to-pink-500 hover:from-rose-700 hover:to-pink-600 shadow-md transition disabled:opacity-50 flex items-center space-x-2"
                 >
-                  {submitting ? (
+                  {savingEdit ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Saving & Sending…</span>
+                      <span>Saving…</span>
                     </>
                   ) : (
+                    <span>Save Changes</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Record Offline Donation Modal */}
+      {isRecordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setIsRecordModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-3 mb-5">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                <PlusCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Record Offline / Direct Donation</h3>
+                <p className="text-xs text-slate-400">
+                  Add verified direct UPI, Cheque, or Bank Transfer donations.
+                </p>
+              </div>
+            </div>
+
+            {recordError && (
+              <div className="p-3 mb-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{recordError}</span>
+              </div>
+            )}
+
+            {recordSuccess && (
+              <div className="p-3 mb-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-start space-x-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{recordSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleRecordDonation} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Donor Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newDonorName}
+                    onChange={(e) => setNewDonorName(e.target.value)}
+                    placeholder="e.g. Suresh Prakash"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={newDonorEmail}
+                    onChange={(e) => setNewDonorEmail(e.target.value)}
+                    placeholder="donor@example.com"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Donation Amount (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={newAmountRupees}
+                    onChange={(e) => setNewAmountRupees(e.target.value)}
+                    placeholder="e.g. 5000"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Payment Method
+                  </label>
+                  <select
+                    value={newPaymentMethod}
+                    onChange={(e) => setNewPaymentMethod(e.target.value as any)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="DIRECT_UPI">Direct UPI Transfer</option>
+                    <option value="BANK_TRANSFER">NEFT / RTGS / IMPS</option>
+                    <option value="CASH">Cash / Cheque</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    Mobile Number (Optional)
+                  </label>
+                  <input
+                    type="tel"
+                    value={newDonorMobile}
+                    onChange={(e) => setNewDonorMobile(e.target.value)}
+                    placeholder="10-digit number"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                    PAN (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={newPan}
+                    onChange={(e) => setNewPan(e.target.value.toUpperCase())}
+                    placeholder="e.g. ABCDE1234F"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Organisation / Rotary Club (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={newOrganisationName}
+                  onChange={(e) => setNewOrganisationName(e.target.value)}
+                  placeholder="e.g. Rotary Bengaluru Bannerghatta"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  UTR Reference or Notes
+                </label>
+                <input
+                  type="text"
+                  value={newReferenceOrNotes}
+                  onChange={(e) => setNewReferenceOrNotes(e.target.value)}
+                  placeholder="e.g. UTR 42894829482 / Cheque #123456"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {computedPasses > 0 && (
+                <div className="p-3 rounded-xl bg-pink-500/10 border border-pink-500/20 text-pink-300 text-xs flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Ticket className="w-4 h-4 text-pink-400" />
+                    <span>Eligible for {computedPasses} complimentary pass(es)</span>
+                  </div>
+                  <label className="flex items-center space-x-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newAllocatePasses}
+                      onChange={(e) => setNewAllocatePasses(e.target.checked)}
+                      className="rounded border-slate-700 text-pink-500 focus:ring-pink-500"
+                    />
+                    <span className="text-[11px] text-white">Allocate passes</span>
+                  </label>
+                </div>
+              )}
+
+              <div className="flex items-center space-x-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="sendThankYou"
+                  checked={newSendThankYouEmail}
+                  onChange={(e) => setNewSendThankYouEmail(e.target.checked)}
+                  className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500"
+                />
+                <label htmlFor="sendThankYou" className="text-xs text-slate-300 cursor-pointer">
+                  Send Thank-You email and passes to donor automatically
+                </label>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsRecordModalOpen(false)}
+                  disabled={submittingRecord}
+                  className="px-4 py-2 text-sm text-slate-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingRecord}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md transition disabled:opacity-50 flex items-center space-x-2"
+                >
+                  {submittingRecord ? (
                     <>
-                      <Heart className="w-4 h-4 fill-white/20" />
-                      <span>Record & Send Acknowledgement</span>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Recording…</span>
                     </>
+                  ) : (
+                    <span>Confirm & Record</span>
                   )}
                 </button>
               </div>
@@ -673,3 +943,5 @@ export const AdminDonationsPage: React.FC = () => {
     </div>
   );
 };
+
+export default AdminDonationsPage;

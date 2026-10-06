@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { EventProvider } from './context/EventContext.js';
 import { AdminAuthProvider } from './context/AdminAuthContext.js';
 import { Header } from './components/layout/Header.js';
@@ -37,9 +37,6 @@ const AdminDashboardPage = lazy(() =>
 );
 const AdminOrdersPage = lazy(() =>
   import('./pages/admin/AdminOrdersPage.js').then((m) => ({ default: m.AdminOrdersPage }))
-);
-const AdminPaymentsPage = lazy(() =>
-  import('./pages/admin/AdminPaymentsPage.js').then((m) => ({ default: m.AdminPaymentsPage }))
 );
 const AdminDonationsPage = lazy(() =>
   import('./pages/admin/AdminDonationsPage.js').then((m) => ({ default: m.AdminDonationsPage }))
@@ -118,7 +115,7 @@ export const App: React.FC = () => {
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<AdminDashboardPage />} />
                   <Route path="orders" element={<AdminOrdersPage />} />
-                  <Route path="payments" element={<AdminPaymentsPage />} />
+                  <Route path="payments" element={<Navigate to="/admin/orders" replace />} />
                   <Route path="donations" element={<AdminDonationsPage />} />
                   <Route path="tickets" element={<AdminTicketsPage />} />
                   <Route path="communications" element={<AdminCommunicationsPage />} />

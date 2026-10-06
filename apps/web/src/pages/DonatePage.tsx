@@ -645,7 +645,7 @@ export const DonatePage: React.FC = () => {
                       type="text"
                       value={organisationName}
                       onChange={(e) => setOrganisationName(e.target.value)}
-                      placeholder="e.g. Rotary Bangalore South or Acme Corp"
+                      placeholder="e.g. Rotary Bangalore JP Nagar or Acme Corp"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-pip-500"
                     />
                   </div>

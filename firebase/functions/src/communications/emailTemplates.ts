@@ -146,7 +146,7 @@ export function renderEmail(
       <div style="background: #fdf2f8; border-left: 4px solid #db2777; padding: 12px 16px; border-radius: 6px; margin: 16px 0;">
         <strong style="color: #db2777;">Dress Code Notice:</strong>
         <p style="margin: 4px 0 0 0; font-size: 13px; color: #831843;">
-          Please wear your favourite <strong>pink clothing or accessories</strong> to stand in solidarity with breast cancer fighters and survivors!
+          Please wear your favourite <strong>white or pink clothing or accessories</strong> to stand in solidarity with breast cancer fighters and survivors!
         </p>
       </div>
 
@@ -157,7 +157,7 @@ export function renderEmail(
       <p>Thank you for joining the movement to save lives through early detection!</p>
       `
     );
-    const text = `Hello ${data.recipientName},\n\nYour passes for Party In Pink 5.0 are confirmed!\nBooking Reference: ${data.reference}\nPass ID: ${cleanPassId}\nPasses: ${data.ticketCount || 1}\n\nDress Code: Please wear pink attire!\nTrack status: ${data.statusUrl}\n\nRotaract Club of Bangalore JP Nagar`;
+    const text = `Hello ${data.recipientName},\n\nYour passes for Party In Pink 5.0 are confirmed!\nBooking Reference: ${data.reference}\nPass ID: ${cleanPassId}\nPasses: ${data.ticketCount || 1}\n\nDress Code: Please wear white or pink attire!\nTrack status: ${data.statusUrl}\n\nRotaract Club of Bangalore JP Nagar`;
     return { subject, html, text };
   }
 
@@ -209,7 +209,6 @@ export function renderEmail(
         <strong>Contributed Amount:</strong> ${safe.amountFormatted || 'N/A'}<br>
         ${hasPasses ? `<strong>Complimentary Passes:</strong> ${safe.ticketCount} Passes Included<br>` : ''}
         ${data.pan ? `<strong>PAN Number:</strong> ${safe.pan}<br>` : ''}
-        <strong>80G Notice:</strong> The event payment accounts do not provide an 80G certificate
       </div>
 
       ${
@@ -225,11 +224,10 @@ export function renderEmail(
           : ''
       }
 
-      <p>If you require an 80G certificate, contact the organizing team before making a donation so they can guide you through the appropriate eligible process.</p>
-      <p>With warm regards,<br><strong>Rotaract Club of Bangalore JP Nagar & Rotary Bangalore South</strong></p>
+      <p>With warm regards,<br><strong>Rotaract Club of Bangalore JP Nagar</strong></p>
       `
     );
-    const text = `Dear ${data.recipientName},\n\nThank you for your generous contribution of ${data.amountFormatted} to Party In Pink 5.0 (Ref: ${data.reference}). Your contribution supports breast cancer care and surgeries through Sri Shankara Cancer Foundation.\n\n${hasPasses ? `Complimentary Passes: ${data.ticketCount} Passes Included (Official tickets with QR codes sent in a separate email).\n\n` : ''}The event payment accounts do not provide an 80G certificate. Contact the organizing team before donating if you require an eligible receipt.\n\nRotaract Club of Bangalore JP Nagar`;
+    const text = `Dear ${data.recipientName},\n\nThank you for your generous contribution of ${data.amountFormatted} to Party In Pink 5.0 (Ref: ${data.reference}). Your contribution supports breast cancer care and surgeries through Sri Shankara Cancer Foundation.\n\n${hasPasses ? `Complimentary Passes: ${data.ticketCount} Passes Included (Official tickets with QR codes sent in a separate email).\n\n` : ''}With warm regards,\nRotaract Club of Bangalore JP Nagar`;
     return { subject, html, text };
   }
 

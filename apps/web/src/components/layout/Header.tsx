@@ -11,14 +11,17 @@ import {
   Info,
   Heart,
   Home,
+  Shield,
 } from 'lucide-react';
 import { useEvent } from '../../context/EventContext.js';
+import { useAdminAuth } from '../../context/AdminAuthContext.js';
 import { BrandLogo } from '../common/BrandLogo.js';
 
 export const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { event, isRegistrationOpen } = useEvent();
+  const { isAuthenticated, profile } = useAdminAuth();
 
   const mobileNavLinks = [
     { name: 'Home', path: '/', icon: Home },
@@ -92,6 +95,23 @@ export const Header: React.FC = () => {
               </span>
             )}
 
+            <Link
+              to="/admin"
+              className={`hidden sm:inline-flex items-center justify-center p-2 rounded-xl transition-all ${
+                isAuthenticated
+                  ? 'text-pip-600 bg-pip-50 hover:bg-pip-100 ring-1 ring-pip-200'
+                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+              }`}
+              title={
+                isAuthenticated
+                  ? `Admin Console (${profile?.displayName || 'Active'})`
+                  : 'Admin Portal'
+              }
+              aria-label="Admin Portal"
+            >
+              <Shield className="w-4 h-4" />
+            </Link>
+
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -156,6 +176,34 @@ export const Header: React.FC = () => {
               >
                 <Heart className="w-3.5 h-3.5" />
                 <span>Donate</span>
+              </Link>
+            </div>
+
+            {/* Mobile Admin Entry Point for PWA & Handhelds */}
+            <div className="pt-2">
+              <Link
+                to="/admin"
+                onClick={closeMobile}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-sm active:scale-[0.99] border border-slate-800"
+              >
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-pip-500/20 border border-pip-400/30 flex items-center justify-center shrink-0">
+                    <Shield className="w-4 h-4 text-pip-400" />
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-white tracking-wide">
+                      {isAuthenticated ? 'Admin Console' : 'Admin Login / Portal'}
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      {isAuthenticated
+                        ? (profile?.displayName || 'Active Committee')
+                        : 'Rotaract Operations & Scanning'}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-slate-800 text-pip-300 border border-slate-700">
+                  {isAuthenticated ? 'Open →' : 'Sign In'}
+                </span>
               </Link>
             </div>
           </div>

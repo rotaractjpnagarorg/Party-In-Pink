@@ -14,7 +14,7 @@ describe('Email Templates Engine', () => {
     expect(rendered.subject).toContain('Confirmed');
     expect(rendered.html).toContain('Aarav Sharma');
     expect(rendered.html).toContain('PIP5-S-TEST1234');
-    expect(rendered.html).toContain('pink clothing or accessories');
+    expect(rendered.html).toContain('white or pink clothing or accessories');
     expect(rendered.text).toContain('Aarav Sharma');
   });
 
@@ -34,7 +34,7 @@ describe('Email Templates Engine', () => {
     expect(rendered.html).toContain('Under Verification');
   });
 
-  it('renders DONATION_THANK_YOU template with 80G tax exemption info', () => {
+  it('renders DONATION_THANK_YOU template with donation and PAN details', () => {
     const rendered = renderEmail('DONATION_THANK_YOU', {
       recipientName: 'Suresh Kumar',
       reference: 'PIP5-D-DON1234',
@@ -44,10 +44,12 @@ describe('Email Templates Engine', () => {
 
     expect(rendered.subject).toContain('PIP5-D-DON1234');
     expect(rendered.html).toContain('₹5,000');
-    expect(rendered.html).toContain('80G Notice:');
+    expect(rendered.html).not.toContain('80G Notice:');
+    expect(rendered.html).not.toContain('Complimentary Passes');
     expect(rendered.html).toContain('ABCDE1234F');
     expect(rendered.text).toContain('breast cancer care and surgeries');
-    expect(rendered.text).toContain('do not provide an 80G certificate');
+    expect(rendered.text).not.toContain('do not provide an 80G certificate');
+    expect(rendered.text).not.toContain('Complimentary Passes');
   });
 
   it('renders DONATION_THANK_YOU template with complimentary passes when ticketCount > 0', () => {

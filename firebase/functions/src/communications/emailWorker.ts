@@ -290,7 +290,12 @@ const resendSchema = z.object({
 export const adminResendConfirmation = onCall(
   { region: 'asia-south1', cors: true, secrets: [BREVO_API_KEY] },
   async (request) => {
-    await requireAdminRole(request, ['SUPER_ADMIN', 'REGISTRATION_ADMIN']);
+    await requireAdminRole(request, [
+      'SUPER_ADMIN',
+      'REGISTRATION_ADMIN',
+      'PAYMENT_APPROVER',
+      'FINANCE_VIEW',
+    ]);
     const parsed = resendSchema.safeParse(request.data);
     if (!parsed.success)
       throw new HttpsError('invalid-argument', 'Valid entity type and ID are required.');
@@ -322,6 +327,11 @@ export const adminResendConfirmation = onCall(
       createdAt: nowIso,
       updatedAt: nowIso,
     });
+    try {
+      await processEmailJob(jobRef.id);
+    } catch (sendErr) {
+      console.warn('[adminResendConfirmation] Direct delivery attempt logged:', sendErr);
+    }
     return { success: true, jobId: jobRef.id };
   }
 );
