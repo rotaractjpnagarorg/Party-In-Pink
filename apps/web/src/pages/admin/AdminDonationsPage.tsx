@@ -82,8 +82,12 @@ export const AdminDonationsPage: React.FC = () => {
   const loadDonations = async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, 'donations'), orderBy('createdAt', 'desc'));
-      const snap = await getDocs(q);
+      let snap;
+      try {
+        snap = await getDocs(query(collection(db, 'donations'), orderBy('createdAt', 'desc')));
+      } catch {
+        snap = await getDocs(collection(db, 'donations'));
+      }
       const rows: DonationRow[] = snap.docs.map((doc) => {
         const d = doc.data();
         const amountPaise = d.amountPaise || 0;

@@ -70,18 +70,24 @@ function formatCurrency(paise: number): string {
 export const AdminDashboardPage: React.FC = () => {
   const [metrics, setMetrics] = useState<DashboardMetrics>(initialMetrics);
   const [recentActivities, setRecentActivities] = useState<RecentActivityItem[]>([]);
+  const [activityFilter, setActivityFilter] = useState<'ALL' | 'DONATION' | 'REGISTRATION'>('ALL');
   const [loading, setLoading] = useState(true);
 
   const loadDashboardData = async () => {
     setLoading(true);
-    try {
-      const m = { ...initialMetrics };
-      const activities: RecentActivityItem[] = [];
+    const m = { ...initialMetrics };
+    const activities: RecentActivityItem[] = [];
 
-      // 1. Fetch Donations
-      const donationsSnap = await getDocs(
-        query(collection(db, 'donations'), orderBy('createdAt', 'desc'))
-      );
+    // 1. Fetch Donations
+    try {
+      let donationsSnap;
+      try {
+        donationsSnap = await getDocs(
+          query(collection(db, 'donations'), orderBy('createdAt', 'desc'))
+        );
+      } catch {
+        donationsSnap = await getDocs(collection(db, 'donations'));
+      }
 
       donationsSnap.forEach((doc) => {
         const d = doc.data();
@@ -94,7 +100,7 @@ export const AdminDashboardPage: React.FC = () => {
           activities.push({
             id: doc.id,
             type: 'DONATION',
-            name: d.donor?.fullName || 'Anonymous Donor',
+            name: d.donor?.fullName || d.organisationName || 'Anonymous Donor',
             amountPaise: amt,
             reference: d.publicReference || doc.id.slice(0, 10),
             dateStr: d.createdAt || '',
@@ -102,11 +108,20 @@ export const AdminDashboardPage: React.FC = () => {
           });
         }
       });
+    } catch (err) {
+      console.warn('[Admin Dashboard] Error loading donations:', err);
+    }
 
-      // 2. Fetch Orders
-      const ordersSnap = await getDocs(
-        query(collection(db, 'orders'), orderBy('createdAt', 'desc'))
-      );
+    // 2. Fetch Orders
+    try {
+      let ordersSnap;
+      try {
+        ordersSnap = await getDocs(
+          query(collection(db, 'orders'), orderBy('createdAt', 'desc'))
+        );
+      } catch {
+        ordersSnap = await getDocs(collection(db, 'orders'));
+      }
 
       ordersSnap.forEach((doc) => {
         const d = doc.data();
@@ -140,8 +155,12 @@ export const AdminDashboardPage: React.FC = () => {
         if (d.orderStatus === 'PAYMENT_SUBMITTED') m.pendingApprovalsCount++;
         if (d.orderStatus === 'REVIEW_REQUIRED') m.reviewRequiredCount++;
       });
+    } catch (err) {
+      console.warn('[Admin Dashboard] Error loading orders:', err);
+    }
 
-      // 3. Fetch Payment Sessions for pending verification checks
+    // 3. Fetch Payment Sessions (non-blocking)
+    try {
       const paymentsSnap = await getDocs(collection(db, 'paymentSessions'));
       let extraPending = 0;
       paymentsSnap.forEach((doc) => {
@@ -150,27 +169,30 @@ export const AdminDashboardPage: React.FC = () => {
         if (d.status === 'REVIEW_REQUIRED' && !m.reviewRequiredCount) m.reviewRequiredCount++;
       });
       if (!m.pendingApprovalsCount) m.pendingApprovalsCount = extraPending;
+    } catch {
+      // Permission-tolerant
+    }
 
-      // 4. Fetch Email Jobs
+    // 4. Fetch Email Jobs (non-blocking)
+    try {
       const emailsSnap = await getDocs(collection(db, 'emailJobs'));
       emailsSnap.forEach((doc) => {
         const d = doc.data();
         if (d.status === 'SENT') m.emailsSent++;
         if (d.status === 'FAILED') m.emailsFailed++;
       });
-
-      // Grand Total
-      m.grandTotalPaise = m.verifiedDonationsPaise + m.verifiedTicketsPaise;
-
-      // Sort recent activities desc
-      activities.sort((a, b) => (b.dateStr || '').localeCompare(a.dateStr || ''));
-      setRecentActivities(activities.slice(0, 10));
-      setMetrics(m);
-    } catch (err) {
-      console.error('[Admin Dashboard] Error loading dashboard:', err);
-    } finally {
-      setLoading(false);
+    } catch {
+      // Permission-tolerant
     }
+
+    // Grand Total Collections
+    m.grandTotalPaise = m.verifiedDonationsPaise + m.verifiedTicketsPaise;
+
+    // Sort recent activities desc
+    activities.sort((a, b) => (b.dateStr || '').localeCompare(a.dateStr || ''));
+    setRecentActivities(activities);
+    setMetrics(m);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -218,6 +240,15 @@ export const AdminDashboardPage: React.FC = () => {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
+
+          <Link
+            to="/admin/donations"
+            className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-sm font-medium transition border border-rose-500/30"
+            title="Record offline cash or bank donation"
+          >
+            <Heart className="w-4 h-4 text-rose-400" />
+            <span>Record Donation</span>
+          </Link>
 
           <Link
             to="/admin/tickets"
@@ -405,31 +436,73 @@ export const AdminDashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Passbook Stream (2 cols) */}
         <div className="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-xl">
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
             <div>
               <h2 className="text-lg font-bold text-white flex items-center space-x-2">
                 <span>Recent Passbook Transactions</span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Real-time stream of verified donations, corporate sponsorships, and ticket passes.
+                Real-time verified ledger of donations, corporate sponsorships, and ticket passes.
               </p>
             </div>
-            <Link
-              to="/admin/donations"
-              className="text-xs font-semibold text-pip-400 hover:text-pip-300 flex items-center space-x-1"
-            >
-              <span>View All</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
+            <div className="flex items-center space-x-2">
+              <div className="flex p-0.5 rounded-lg bg-slate-800 border border-slate-700/60 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setActivityFilter('ALL')}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition ${
+                    activityFilter === 'ALL'
+                      ? 'bg-pip-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivityFilter('DONATION')}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition ${
+                    activityFilter === 'DONATION'
+                      ? 'bg-rose-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Donations
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivityFilter('REGISTRATION')}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition ${
+                    activityFilter === 'REGISTRATION'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Passes
+                </button>
+              </div>
+              <Link
+                to="/admin/donations"
+                className="text-xs font-semibold text-pip-400 hover:text-pip-300 flex items-center space-x-1 ml-1"
+              >
+                <span>View All</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
           <div className="divide-y divide-slate-800/80">
-            {recentActivities.length === 0 ? (
+            {recentActivities
+              .filter((item) => activityFilter === 'ALL' || item.type === activityFilter)
+              .slice(0, 15).length === 0 ? (
               <div className="py-12 text-center text-slate-500 text-sm">
-                No verified transactions recorded yet.
+                No transactions recorded under this category yet.
               </div>
             ) : (
-              recentActivities.map((item) => (
+              recentActivities
+                .filter((item) => activityFilter === 'ALL' || item.type === activityFilter)
+                .slice(0, 15)
+                .map((item) => (
                 <div
                   key={`${item.type}-${item.id}`}
                   className="py-3.5 flex items-center justify-between hover:bg-slate-800/30 px-3 -mx-3 rounded-xl transition"

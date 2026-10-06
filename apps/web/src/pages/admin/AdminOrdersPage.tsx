@@ -76,13 +76,24 @@ export const AdminOrdersPage: React.FC = () => {
   const loadOrders = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Orders
-      const qOrders = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
-      const ordersSnap = await getDocs(qOrders);
+      let ordersSnap;
+      try {
+        ordersSnap = await getDocs(query(collection(db, 'orders'), orderBy('createdAt', 'desc')));
+      } catch {
+        ordersSnap = await getDocs(collection(db, 'orders'));
+      }
 
-      // 2. Fetch Payment Sessions to correlate UTR & payment proofs
-      const qPayments = query(collection(db, 'paymentSessions'), orderBy('createdAt', 'desc'));
-      const paymentsSnap = await getDocs(qPayments);
+      // 2. Fetch Payment Sessions to correlate UTR & payment proofs (optional/resilient)
+      let paymentsSnap;
+      try {
+        paymentsSnap = await getDocs(query(collection(db, 'paymentSessions'), orderBy('createdAt', 'desc')));
+      } catch {
+        try {
+          paymentsSnap = await getDocs(collection(db, 'paymentSessions'));
+        } catch {
+          paymentsSnap = { docs: [] };
+        }
+      }
       const paymentMap = new Map<string, any>();
       paymentsSnap.docs.forEach((d) => {
         const data = d.data();
