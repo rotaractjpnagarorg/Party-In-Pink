@@ -157,7 +157,7 @@ export const AdminDonationsPage: React.FC = () => {
       setEditError('Please enter a valid donor name (min 2 characters).');
       return;
     }
-    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setEditError('Please enter a valid donor email address.');
       return;
     }
@@ -173,7 +173,7 @@ export const AdminDonationsPage: React.FC = () => {
         entityType: 'DONATION',
         entityId: editingDonation.id,
         fullName: trimmedName,
-        email: trimmedEmail,
+        email: trimmedEmail || undefined,
         mobileNumber: trimmedMobile || undefined,
       });
 
@@ -183,7 +183,7 @@ export const AdminDonationsPage: React.FC = () => {
             ? {
                 ...d,
                 donorName: trimmedName,
-                donorEmail: trimmedEmail,
+                donorEmail: trimmedEmail || '—',
                 donorMobile: trimmedMobile || '—',
               }
             : d
@@ -673,18 +673,17 @@ export const AdminDonationsPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Email Address *
+                  Email Address (Optional / Add when available)
                 </label>
                 <input
                   type="email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
-                  required
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  placeholder="donor@example.com"
+                  placeholder="donor@example.com (or leave empty)"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Updates donor record and thank-you recipient.
+                  Add anytime moving forward to enable thank-you email and passes dispatch.
                 </p>
               </div>
 
