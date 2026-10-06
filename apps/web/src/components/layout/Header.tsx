@@ -44,7 +44,7 @@ export const Header: React.FC = () => {
   const closeMobile = () => setMobileMenuOpen(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 shadow-sm backdrop-blur-md w-full max-w-full overflow-x-hidden transition-[background-color,border-color,box-shadow] duration-300">
+    <header className="relative z-50 border-b border-slate-200/80 bg-white shadow-sm w-full max-w-full overflow-x-hidden transition-[background-color,border-color,box-shadow] duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between sm:h-20">
           {/* Brand Logo & Title */}

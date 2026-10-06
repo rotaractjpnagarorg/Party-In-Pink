@@ -623,7 +623,7 @@ export const AdminDashboardPage: React.FC = () => {
               <span>Party In Pink 5.0 Event Details</span>
             </div>
             <p>
-              📍 <strong>Venue:</strong> St. Joseph's College of Commerce, Bangalore
+              📍 <strong>Venue:</strong> SSMRV College, Jayanagar 4th T Block, Bengaluru
             </p>
             <p>
               🎗️ <strong>Beneficiary:</strong> Sri Shankara Cancer Foundation
