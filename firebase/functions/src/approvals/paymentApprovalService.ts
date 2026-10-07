@@ -12,7 +12,8 @@ import { generateStatusToken } from '../utils/reference.js';
 import { HttpsError } from 'firebase-functions/v2/https';
 
 export interface ProcessApprovalInput {
-  paymentId: string;
+  paymentId?: string | null;
+  orderId?: string | null;
   decision: 'APPROVE' | 'REJECT' | 'REVIEW';
   actor: string;
   source: 'SLACK' | 'ADMIN_DASHBOARD';
@@ -39,43 +40,93 @@ export interface ProcessApprovalResult {
 export async function processPaymentApproval(
   input: ProcessApprovalInput
 ): Promise<ProcessApprovalResult> {
-  const { paymentId, decision, actor, source, reason, notes } = input;
+  const { decision, actor, source, reason, notes } = input;
+  let paymentId = input.paymentId;
+  const orderId = input.orderId;
   const nowIso = new Date().toISOString();
 
   return await db.runTransaction(async (transaction) => {
-    // 1. Fetch payment session
-    const sessionRef = db.collection('paymentSessions').doc(paymentId);
-    const sessionDoc = await transaction.get(sessionRef);
+    let sessionRef: FirebaseFirestore.DocumentReference | null = null;
+    let session: any = null;
 
-    if (!sessionDoc.exists) {
-      throw new HttpsError('not-found', `Payment session ${paymentId} not found.`);
+    // 1. Try finding payment session if paymentId provided
+    if (paymentId) {
+      const candidateRef = db.collection('paymentSessions').doc(paymentId);
+      const candidateDoc = await transaction.get(candidateRef);
+      if (candidateDoc.exists) {
+        sessionRef = candidateRef;
+        session = candidateDoc.data();
+      }
     }
 
-    const session = sessionDoc.data() as any;
+    // 2. If not found via paymentId, resolve via orderId
+    const targetOrderId = orderId || (!session && paymentId ? paymentId : null);
+    if (!session && targetOrderId) {
+      const orderRef = db.collection('orders').doc(targetOrderId);
+      const orderDoc = await transaction.get(orderRef);
+      if (orderDoc.exists) {
+        const orderData = orderDoc.data()!;
+        if (orderData.paymentSessionId) {
+          const sRef = db.collection('paymentSessions').doc(orderData.paymentSessionId);
+          const sDoc = await transaction.get(sRef);
+          if (sDoc.exists) {
+            sessionRef = sRef;
+            session = sDoc.data();
+            paymentId = sRef.id;
+          }
+        }
+
+        // If no payment session existed on the order, synthesize one
+        if (!session) {
+          paymentId = `PAY_ADM_${targetOrderId}`;
+          sessionRef = db.collection('paymentSessions').doc(paymentId);
+          session = {
+            id: paymentId,
+            merchantReference: orderData.publicReference || targetOrderId,
+            entityType: 'ORDER',
+            entityId: targetOrderId,
+            entityReference: orderData.publicReference || targetOrderId,
+            method: 'ADMIN_MANUAL',
+            amountPaise: orderData.totalAmountPaise || 0,
+            currency: 'INR',
+            status: PaymentStatuses.PAYMENT_SUBMITTED,
+            createdAt: orderData.createdAt || nowIso,
+            updatedAt: nowIso,
+          };
+          transaction.set(sessionRef, session);
+        }
+      }
+    }
+
+    if (!session || !sessionRef || !paymentId) {
+      throw new HttpsError('not-found', `Payment session or order could not be resolved.`);
+    }
 
     // 2. State machine checks (APP-P0-001, APP-P0-002)
-    if (session.status === PaymentStatuses.VERIFIED) {
+    if (session.status === PaymentStatuses.VERIFIED && decision === 'APPROVE') {
       throw new HttpsError(
         'already-exists',
         `Payment ${paymentId} has already been verified and approved by ${session.verification?.verifiedBy || 'another approver'}.`
       );
     }
 
-    if (session.status === PaymentStatuses.REJECTED) {
+    if (session.status === PaymentStatuses.REJECTED && decision === 'REJECT') {
       throw new HttpsError(
         'failed-precondition',
         `Payment ${paymentId} has already been rejected by ${session.verification?.verifiedBy || 'another approver'}.`
       );
     }
 
-    if (
-      session.status !== PaymentStatuses.PAYMENT_SUBMITTED &&
-      session.status !== PaymentStatuses.REVIEW_REQUIRED
-    ) {
-      throw new HttpsError(
-        'failed-precondition',
-        `Cannot process approval for payment in status ${session.status}.`
-      );
+    if (source === 'SLACK') {
+      if (
+        session.status !== PaymentStatuses.PAYMENT_SUBMITTED &&
+        session.status !== PaymentStatuses.REVIEW_REQUIRED
+      ) {
+        throw new HttpsError(
+          'failed-precondition',
+          `Cannot process approval for payment in status ${session.status}.`
+        );
+      }
     }
 
     const entityType: 'ORDER' | 'DONATION' = session.entityType || 'ORDER';
@@ -86,7 +137,7 @@ export async function processPaymentApproval(
       throw new HttpsError('not-found', `${entityType} ${entityId} not found.`);
     }
     const entityData = entityDoc.data()!;
-    if (entityData.paymentSessionId !== paymentId) {
+    if (entityData.paymentSessionId && entityData.paymentSessionId !== paymentId && source !== 'ADMIN_DASHBOARD') {
       throw new HttpsError(
         'failed-precondition',
         'This payment session is no longer the active session for the order or donation.'

@@ -4,10 +4,11 @@ import { processPaymentApproval } from '../approvals/paymentApprovalService.js';
 import { requireAdminRole } from '../middleware/adminAuthorization.js';
 
 const adminApproveSchema = z.object({
-  paymentId: z.string().min(1, 'Payment ID is required'),
+  paymentId: z.string().nullable().optional(),
+  orderId: z.string().nullable().optional(),
   decision: z.enum(['APPROVE', 'REJECT', 'REVIEW']),
-  reason: z.string().optional(),
-  notes: z.string().optional(),
+  reason: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
 });
 
 /**
@@ -30,16 +31,21 @@ export const adminApprovePayment = onCall(
       );
     }
 
-    const { paymentId, decision, reason, notes } = parseResult.data;
+    const { paymentId, orderId, decision, reason, notes } = parseResult.data;
+
+    if (!paymentId && !orderId) {
+      throw new HttpsError('invalid-argument', 'Either paymentId or orderId is required.');
+    }
 
     try {
       const result = await processPaymentApproval({
-        paymentId,
+        paymentId: paymentId || undefined,
+        orderId: orderId || undefined,
         decision,
         actor: `ADMIN:${admin.email}`,
         source: 'ADMIN_DASHBOARD',
-        reason,
-        notes,
+        reason: reason || undefined,
+        notes: notes || undefined,
       });
 
       return result;

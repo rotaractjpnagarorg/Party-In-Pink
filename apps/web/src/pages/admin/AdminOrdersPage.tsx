@@ -164,11 +164,6 @@ export const AdminOrdersPage: React.FC = () => {
 
   // Payment Approval / Rejection directly from Orders tab
   const handleApprovePayment = async (order: OrderRow, decision: 'APPROVE' | 'REJECT') => {
-    if (!order.paymentSessionId) {
-      showToast('No payment session found for this order.', 'error');
-      return;
-    }
-
     const reason =
       decision === 'REJECT'
         ? window.prompt('Reason for rejecting payment (will be recorded in audit log):')
@@ -179,11 +174,18 @@ export const AdminOrdersPage: React.FC = () => {
     setApprovingId(order.id);
     try {
       const approveFn = httpsCallable(functions, 'adminApprovePayment');
-      await approveFn({
-        paymentId: order.paymentSessionId,
+      const payload: Record<string, any> = {
         decision,
-        reason: reason || undefined,
-      });
+        orderId: order.id,
+      };
+      if (order.paymentSessionId) {
+        payload.paymentId = order.paymentSessionId;
+      }
+      if (reason && reason.trim()) {
+        payload.reason = reason.trim();
+      }
+
+      await approveFn(payload);
 
       showToast(`Payment ${decision === 'APPROVE' ? 'approved & confirmed' : 'rejected'} successfully!`);
       await loadOrders();
@@ -668,7 +670,9 @@ export const AdminOrdersPage: React.FC = () => {
                     order.orderStatus === 'PAYMENT_SUBMITTED' ||
                     order.orderStatus === 'REVIEW_REQUIRED' ||
                     order.paymentStatus === 'PAYMENT_SUBMITTED' ||
-                    order.paymentStatus === 'REVIEW_REQUIRED';
+                    order.paymentStatus === 'REVIEW_REQUIRED' ||
+                    order.orderStatus === 'AWAITING_PAYMENT' ||
+                    order.paymentStatus === 'AWAITING_PAYMENT';
 
                   return (
                     <React.Fragment key={order.id}>
@@ -736,8 +740,8 @@ export const AdminOrdersPage: React.FC = () => {
 
                         <td className="px-4 py-3.5 text-right">
                           <div className="flex items-center justify-end space-x-2">
-                            {/* If pending approval, show Approve button */}
-                            {isPendingAction && order.paymentSessionId && (
+                            {/* If pending confirmation, show Approve button */}
+                            {order.orderStatus !== 'CONFIRMED' && (
                               <div className="flex items-center space-x-1">
                                 <button
                                   onClick={() => handleApprovePayment(order, 'APPROVE')}
