@@ -148,15 +148,25 @@ export const AdminScannerPage: React.FC = () => {
 
           try {
             const attsSnap = await getDocs(collection(db, 'orders', oDoc.id, 'attendees'));
+            const orderCore = (o.publicReference || oDoc.id).replace(/^PIP5-(S|B|D)-/, '');
             if (!attsSnap.empty) {
-              attsSnap.docs.forEach((aDoc) => {
+              attsSnap.docs.forEach((aDoc, idx) => {
                 const a = aDoc.data();
                 const attId = aDoc.id;
-                const regId = a.registrationId || a.passId || '';
+                const defaultRegId =
+                  passType === 'SINGLE'
+                    ? `PIP5-REG-${orderCore}`
+                    : passType === 'BULK'
+                    ? `PIP5-BUL-${orderCore}-P${String(idx + 1).padStart(2, '0')}`
+                    : `PIP5-DON-${orderCore}-P${String(idx + 1).padStart(2, '0')}`;
+                const regId = a.registrationId || a.passId || defaultRegId;
                 const isCheckedIn =
                   a.checkInStatus === 'CHECKED_IN' ||
                   !!localCheckIns[attId] ||
-                  !!localCheckIns[regId];
+                  !!localCheckIns[regId] ||
+                  !!localCheckIns[defaultRegId] ||
+                  !!localCheckIns[o.publicReference || ''] ||
+                  !!localCheckIns[orderCore];
 
                 items.push({
                   id: attId,
@@ -176,8 +186,18 @@ export const AdminScannerPage: React.FC = () => {
                 });
               });
             } else if (o.buyer) {
-              const regId = `PIP5-REG-${(o.publicReference || oDoc.id).replace('PIP5-S-', '')}`;
-              const isCheckedIn = !!localCheckIns[oDoc.id] || !!localCheckIns[regId];
+              const defaultRegId =
+                passType === 'SINGLE'
+                  ? `PIP5-REG-${orderCore}`
+                  : passType === 'BULK'
+                  ? `PIP5-BUL-${orderCore}-P01`
+                  : `PIP5-DON-${orderCore}-P01`;
+              const regId = defaultRegId;
+              const isCheckedIn =
+                !!localCheckIns[oDoc.id] ||
+                !!localCheckIns[regId] ||
+                !!localCheckIns[o.publicReference || ''] ||
+                !!localCheckIns[orderCore];
               items.push({
                 id: oDoc.id,
                 orderId: oDoc.id,
@@ -231,13 +251,50 @@ export const AdminScannerPage: React.FC = () => {
   const attendeeIndex = useMemo(() => {
     const map = new Map<string, ScannableAttendee>();
 
+    const indexKey = (key: string | undefined | null, att: ScannableAttendee) => {
+      if (!key) return;
+      const k = key.toLowerCase().trim();
+      if (!k) return;
+      map.set(k, att);
+
+      // Map prefixes and canonical variants
+      if (k.startsWith('pip5-reg-')) {
+        map.set(k.replace('pip5-reg-', 'pip5-s-'), att);
+        map.set(k.replace('pip5-reg-', ''), att);
+      } else if (k.startsWith('pip5-s-')) {
+        map.set(k.replace('pip5-s-', 'pip5-reg-'), att);
+        map.set(k.replace('pip5-s-', ''), att);
+      } else if (k.startsWith('pip5-bul-')) {
+        map.set(k.replace('pip5-bul-', 'pip5-b-').replace(/-p\d+$/, ''), att);
+        map.set(k.replace('pip5-bul-', '').replace(/-p\d+$/, ''), att);
+      } else if (k.startsWith('pip5-b-')) {
+        map.set(k.replace('pip5-b-', 'pip5-bul-'), att);
+        map.set(k.replace('pip5-b-', ''), att);
+      } else if (k.startsWith('pip5-don-')) {
+        map.set(k.replace('pip5-don-', 'pip5-d-').replace(/-p\d+$/, ''), att);
+        map.set(k.replace('pip5-don-', '').replace(/-p\d+$/, ''), att);
+      } else if (k.startsWith('pip5-d-')) {
+        map.set(k.replace('pip5-d-', 'pip5-don-'), att);
+        map.set(k.replace('pip5-d-', ''), att);
+      }
+
+      // Index 4+ character core alphanumeric identifier
+      const core = k.replace(/^pip5-(?:reg|bul|don|s|b|d)-/i, '').replace(/-p\d+$/i, '');
+      if (core && core.length >= 4) {
+        map.set(core, att);
+      }
+    };
+
     attendees.forEach((att) => {
-      if (att.registrationId) map.set(att.registrationId.toLowerCase().trim(), att);
-      if (att.bookingId) map.set(att.bookingId.toLowerCase().trim(), att);
-      if (att.orderRef) map.set(att.orderRef.toLowerCase().trim(), att);
-      if (att.id) map.set(att.id.toLowerCase().trim(), att);
-      if (att.email) map.set(att.email.toLowerCase().trim(), att);
+      indexKey(att.registrationId, att);
+      indexKey(att.orderRef, att);
+      indexKey(att.orderId, att);
+      indexKey(att.id, att);
+      indexKey(att.bookingId, att);
+      indexKey(att.email, att);
+      indexKey(att.fullName, att);
       if (att.phone) {
+        indexKey(att.phone, att);
         const digits = att.phone.replace(/\D/g, '').slice(-10);
         if (digits) map.set(digits, att);
       }
@@ -250,9 +307,10 @@ export const AdminScannerPage: React.FC = () => {
   const resolveScannedPayload = useCallback(
     (decodedText: string): ScannableAttendee | null => {
       const text = decodedText.trim();
+      const cleanLower = text.toLowerCase();
 
-      // 1. Direct key match in index
-      const direct = attendeeIndex.get(text.toLowerCase());
+      // 1. Direct key match in index (handles regId, orderRef, core, email, phone)
+      const direct = attendeeIndex.get(cleanLower);
       if (direct) return direct;
 
       // 2. KonfHub pipe-delimited format: id:db3e06de|n:Abhay Lohia|eid:...
@@ -271,14 +329,58 @@ export const AdminScannerPage: React.FC = () => {
         }
       }
 
-      // 3. Match PASS #PIP5-... or PASS#...
-      const passMatch = text.match(/PIP5-[A-Z0-9-]+/i);
+      // 3. Match any PIP5 pass token: PIP5-REG-XXXX, PIP5-S-XXXX, PIP5-BUL-XXXX, etc.
+      const passMatch =
+        text.match(/PIP5-(?:REG|BUL|DON|S|B|D)-[A-Z0-9-]+/i) || text.match(/PIP5-[A-Z0-9-]+/i);
       if (passMatch) {
-        const m = attendeeIndex.get(passMatch[0].toLowerCase());
+        const matchedStr = passMatch[0].toLowerCase();
+        let m = attendeeIndex.get(matchedStr);
+        if (m) return m;
+
+        // Try converted forms
+        if (matchedStr.startsWith('pip5-reg-')) {
+          m =
+            attendeeIndex.get(matchedStr.replace('pip5-reg-', 'pip5-s-')) ||
+            attendeeIndex.get(matchedStr.replace('pip5-reg-', ''));
+          if (m) return m;
+        } else if (matchedStr.startsWith('pip5-s-')) {
+          m =
+            attendeeIndex.get(matchedStr.replace('pip5-s-', 'pip5-reg-')) ||
+            attendeeIndex.get(matchedStr.replace('pip5-s-', ''));
+          if (m) return m;
+        } else if (matchedStr.startsWith('pip5-bul-')) {
+          m =
+            attendeeIndex.get(matchedStr.replace('pip5-bul-', 'pip5-b-').replace(/-p\d+$/, '')) ||
+            attendeeIndex.get(matchedStr.replace('pip5-bul-', '').replace(/-p\d+$/, ''));
+          if (m) return m;
+        } else if (matchedStr.startsWith('pip5-b-')) {
+          m =
+            attendeeIndex.get(matchedStr.replace('pip5-b-', 'pip5-bul-')) ||
+            attendeeIndex.get(matchedStr.replace('pip5-b-', ''));
+          if (m) return m;
+        } else if (matchedStr.startsWith('pip5-don-')) {
+          m =
+            attendeeIndex.get(matchedStr.replace('pip5-don-', 'pip5-d-').replace(/-p\d+$/, '')) ||
+            attendeeIndex.get(matchedStr.replace('pip5-don-', '').replace(/-p\d+$/, ''));
+          if (m) return m;
+        }
+
+        // Try core alphanumeric code
+        const core = matchedStr.replace(/^pip5-(?:reg|bul|don|s|b|d)-/, '').replace(/-p\d+$/, '');
+        if (core) {
+          m = attendeeIndex.get(core);
+          if (m) return m;
+        }
+      }
+
+      // 4. Try extracting 5-8 char alphanumeric core from string (e.g. 55W2SB)
+      const coreMatch = text.match(/\b([A-Z0-9]{5,8})\b/i);
+      if (coreMatch && coreMatch[1]) {
+        const m = attendeeIndex.get(coreMatch[1].toLowerCase());
         if (m) return m;
       }
 
-      // 4. URL format (status or KonfHub)
+      // 5. URL format (status or KonfHub)
       try {
         const url = new URL(text);
         const segments = url.pathname.split('/').filter(Boolean);
@@ -290,15 +392,18 @@ export const AdminScannerPage: React.FC = () => {
         // Not a URL
       }
 
-      // 5. Fuzzy match against all attendees (name or email substring)
-      const cleanLower = text.toLowerCase();
-      const fuzzy = attendees.find(
-        (a) =>
-          (a.fullName && cleanLower.includes(a.fullName.toLowerCase())) ||
-          (a.email && cleanLower.includes(a.email.toLowerCase())) ||
-          (a.bookingId && cleanLower.includes(a.bookingId.toLowerCase())) ||
-          (a.registrationId && cleanLower.includes(a.registrationId.toLowerCase()))
-      );
+      // 6. Fuzzy match against all attendees (name, email, phone)
+      const fuzzy = attendees.find((a) => {
+        const fName = a.fullName ? a.fullName.toLowerCase() : '';
+        const fEmail = a.email ? a.email.toLowerCase() : '';
+        const fPhone = a.phone ? a.phone.replace(/\D/g, '').slice(-10) : '';
+
+        return (
+          (fName && cleanLower.includes(fName)) ||
+          (fEmail && cleanLower.includes(fEmail)) ||
+          (fPhone && cleanLower.includes(fPhone))
+        );
+      });
 
       return fuzzy || null;
     },
