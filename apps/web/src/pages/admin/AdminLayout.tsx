@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Menu,
   X,
+  Scan,
 } from 'lucide-react';
 import { useAdminAuth } from '../../context/AdminAuthContext.js';
 
@@ -26,6 +27,19 @@ const sidebarLinks = [
       'PAYMENT_APPROVER',
       'REGISTRATION_ADMIN',
       'TICKET_ADMIN',
+      'FINANCE_VIEW',
+      'VIEW_ONLY',
+    ],
+  },
+  {
+    name: 'Gate Scanner',
+    path: '/admin/scan',
+    icon: Scan,
+    roles: [
+      'SUPER_ADMIN',
+      'TICKET_ADMIN',
+      'REGISTRATION_ADMIN',
+      'PAYMENT_APPROVER',
       'FINANCE_VIEW',
       'VIEW_ONLY',
     ],

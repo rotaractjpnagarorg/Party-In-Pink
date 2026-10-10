@@ -52,6 +52,9 @@ const AdminCommunicationsPage = lazy(() =>
 const AdminReportsPage = lazy(() =>
   import('./pages/admin/AdminReportsPage.js').then((m) => ({ default: m.AdminReportsPage }))
 );
+const AdminScannerPage = lazy(() =>
+  import('./pages/admin/AdminScannerPage.js').then((m) => ({ default: m.AdminScannerPage }))
+);
 
 import { ScrollToTopButton, ScrollToTopOnNav } from './components/common/ScrollToTop.js';
 
@@ -104,6 +107,7 @@ export const App: React.FC = () => {
                   <Route path="/pay" element={<PaymentPage />} />
                   <Route path="/donate" element={<DonatePage />} />
                   <Route path="/sponsor" element={<SponsorshipPage />} />
+                  <Route path="/scan" element={<Navigate to="/admin/scan" replace />} />
 
                   <Route path="*" element={<NotFoundPage />} />
                 </Route>
@@ -114,6 +118,7 @@ export const App: React.FC = () => {
                 {/* Admin Console — dark theme with sidebar, no Header/Footer */}
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<AdminDashboardPage />} />
+                  <Route path="scan" element={<AdminScannerPage />} />
                   <Route path="orders" element={<AdminOrdersPage />} />
                   <Route path="payments" element={<Navigate to="/admin/orders" replace />} />
                   <Route path="donations" element={<AdminDonationsPage />} />

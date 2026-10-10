@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../services/firebase.js';
@@ -17,6 +18,7 @@ import {
   AlertCircle,
   Loader2,
   Check,
+  Scan,
 } from 'lucide-react';
 import { escapeCsvCell } from '@pip/shared';
 
@@ -318,6 +320,14 @@ export const AdminTicketsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2">
+          <Link
+            to="/admin/scan"
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-md shadow-emerald-600/20 transition"
+            title="Open Gate Scanner Camera"
+          >
+            <Scan className="w-4 h-4" />
+            <span>Gate Scanner</span>
+          </Link>
           <button
             onClick={loadConfirmedTickets}
             disabled={loading}
