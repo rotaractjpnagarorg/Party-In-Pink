@@ -7,8 +7,15 @@ import {
   signOut,
   type User,
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase.js';
+
+const ROOT_SUPER_ADMIN_EMAILS = [
+  'samarthv080@gmail.com',
+  'rtrsamarthviswanath@gmail.com',
+  'srinidhi.vanamamalai@gmail.com',
+  'karthik.ms.2908@gmail.com',
+];
 
 interface AdminProfile {
   uid: string;
@@ -43,34 +50,84 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setUser(firebaseUser);
         setLoading(true);
         try {
-          // Force refresh token to ensure fresh custom claims
-          const tokenResult = await firebaseUser.getIdTokenResult(true);
-          const claimRole =
-            typeof tokenResult.claims.role === 'string' ? tokenResult.claims.role : null;
+          const userEmail = (firebaseUser.email || '').toLowerCase().trim();
+          const isRootSuperAdmin = ROOT_SUPER_ADMIN_EMAILS.includes(userEmail);
 
-          // Check admin profile document in Firestore
+          // Force refresh token to check custom claims
+          let claimRole: string | null = null;
+          try {
+            const tokenResult = await firebaseUser.getIdTokenResult(true);
+            claimRole = typeof tokenResult.claims.role === 'string' ? tokenResult.claims.role : null;
+          } catch (tErr) {
+            console.warn('Could not refresh ID token claims:', tErr);
+          }
+
+          // 1. Check admin profile document by UID
           const adminDocRef = doc(db, 'admins', firebaseUser.uid);
-          const adminSnap = await getDoc(adminDocRef);
+          let adminSnap = await getDoc(adminDocRef);
+          let adminData = adminSnap.exists() ? adminSnap.data() : null;
 
-          if (adminSnap.exists()) {
-            const data = adminSnap.data();
-            const profileRole = typeof data.role === 'string' ? data.role : null;
-            if (claimRole && profileRole === claimRole && data.active === true) {
-              setProfile({
-                uid: firebaseUser.uid,
-                displayName: data.displayName || firebaseUser.displayName || 'Admin',
-                email: firebaseUser.email || '',
-                role: claimRole,
-                active: true,
-              });
-              setError(null);
-            } else {
-              setProfile(null);
-              setError('This account does not have an active admin role.');
+          // 2. If not found by UID, check by email
+          if (!adminData && userEmail) {
+            try {
+              const emailQ = query(
+                collection(db, 'admins'),
+                where('email', '==', userEmail)
+              );
+              const qSnap = await getDocs(emailQ);
+              if (!qSnap.empty && qSnap.docs[0]) {
+                adminData = qSnap.docs[0].data();
+                // Optionally link UID to the record
+                if (!adminData.uid || adminData.uid !== firebaseUser.uid) {
+                  await setDoc(
+                    adminDocRef,
+                    { ...adminData, uid: firebaseUser.uid, updatedAt: new Date().toISOString() },
+                    { merge: true }
+                  );
+                }
+              }
+            } catch (qErr) {
+              console.warn('Error querying admins by email:', qErr);
             }
+          }
+
+          // 3. Fallback for Root Super Admins if no doc exists yet
+          if (!adminData && isRootSuperAdmin) {
+            adminData = {
+              uid: firebaseUser.uid,
+              displayName: firebaseUser.displayName || 'Super Admin',
+              email: userEmail,
+              role: 'SUPER_ADMIN',
+              active: true,
+              updatedAt: new Date().toISOString(),
+            };
+            try {
+              await setDoc(adminDocRef, adminData, { merge: true });
+            } catch (sErr) {
+              console.warn('Error setting root super admin document:', sErr);
+            }
+          }
+
+          if (adminData && adminData.active !== false) {
+            const effectiveRole = isRootSuperAdmin
+              ? 'SUPER_ADMIN'
+              : adminData.role || claimRole || 'VIEW_ONLY';
+
+            setProfile({
+              uid: firebaseUser.uid,
+              displayName: adminData.displayName || firebaseUser.displayName || 'Admin',
+              email: userEmail,
+              role: effectiveRole,
+              active: true,
+            });
+            setError(null);
           } else {
             setProfile(null);
-            setError(`Account ${firebaseUser.email || ''} is not authorized as an administrator.`);
+            setError(
+              adminData && adminData.active === false
+                ? 'Your administrator account has been deactivated.'
+                : `Account ${userEmail} is not authorized as an administrator.`
+            );
           }
         } catch (err: any) {
           console.error('Error loading admin profile:', err);

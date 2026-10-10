@@ -55,6 +55,9 @@ const AdminReportsPage = lazy(() =>
 const AdminScannerPage = lazy(() =>
   import('./pages/admin/AdminScannerPage.js').then((m) => ({ default: m.AdminScannerPage }))
 );
+const AdminTeamPage = lazy(() =>
+  import('./pages/admin/AdminTeamPage.js').then((m) => ({ default: m.AdminTeamPage }))
+);
 
 import { ScrollToTopButton, ScrollToTopOnNav } from './components/common/ScrollToTop.js';
 
@@ -123,6 +126,8 @@ export const App: React.FC = () => {
                   <Route path="payments" element={<Navigate to="/admin/orders" replace />} />
                   <Route path="donations" element={<AdminDonationsPage />} />
                   <Route path="tickets" element={<AdminTicketsPage />} />
+                  <Route path="team" element={<AdminTeamPage />} />
+                  <Route path="admins" element={<Navigate to="/admin/team" replace />} />
                   <Route path="communications" element={<AdminCommunicationsPage />} />
                   <Route path="reports" element={<AdminReportsPage />} />
                 </Route>

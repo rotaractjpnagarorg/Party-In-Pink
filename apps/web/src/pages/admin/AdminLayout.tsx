@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   Scan,
+  Users,
 } from 'lucide-react';
 import { useAdminAuth } from '../../context/AdminAuthContext.js';
 
@@ -73,6 +74,12 @@ const sidebarLinks = [
       'FINANCE_VIEW',
       'VIEW_ONLY',
     ],
+  },
+  {
+    name: 'Team & Admins',
+    path: '/admin/team',
+    icon: Users,
+    roles: ['SUPER_ADMIN'],
   },
   {
     name: 'Communications',
