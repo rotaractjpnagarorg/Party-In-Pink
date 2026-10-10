@@ -187,7 +187,7 @@ export async function processPaymentApproval(
         });
         transaction.update(entityRef, {
           paymentStatus: PaymentStatuses.VERIFIED,
-          orderStatus: OrderStatuses.PAYMENT_VERIFIED,
+          orderStatus: OrderStatuses.CONFIRMED,
           updatedAt: nowIso,
         });
 

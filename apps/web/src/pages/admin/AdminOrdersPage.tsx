@@ -277,7 +277,12 @@ export const AdminOrdersPage: React.FC = () => {
           o.paymentStatus === 'REVIEW_REQUIRED';
         if (!needsAction) return false;
       } else if (statusTab === 'CONFIRMED') {
-        if (o.orderStatus !== 'CONFIRMED') return false;
+        if (
+          o.orderStatus !== 'CONFIRMED' &&
+          o.orderStatus !== 'PAYMENT_VERIFIED' &&
+          o.paymentStatus !== 'VERIFIED'
+        )
+          return false;
       } else if (statusTab === 'AWAITING_PAYMENT') {
         if (
           o.orderStatus !== 'CREATED' &&
@@ -317,7 +322,12 @@ export const AdminOrdersPage: React.FC = () => {
         o.paymentStatus === 'PAYMENT_SUBMITTED' ||
         o.paymentStatus === 'REVIEW_REQUIRED'
     ).length;
-    const confirmed = orders.filter((o) => o.orderStatus === 'CONFIRMED');
+    const confirmed = orders.filter(
+      (o) =>
+        o.orderStatus === 'CONFIRMED' ||
+        o.orderStatus === 'PAYMENT_VERIFIED' ||
+        o.paymentStatus === 'VERIFIED'
+    );
     const confirmedAmount = confirmed.reduce((sum, o) => sum + o.amountPaise, 0);
     const confirmedPasses = confirmed.reduce((sum, o) => sum + o.participantCount, 0);
 
@@ -332,11 +342,15 @@ export const AdminOrdersPage: React.FC = () => {
 
   // Status Badge Helper
   const renderStatusBadge = (order: OrderRow) => {
-    if (order.orderStatus === 'CONFIRMED') {
+    if (
+      order.orderStatus === 'CONFIRMED' ||
+      order.orderStatus === 'PAYMENT_VERIFIED' ||
+      order.paymentStatus === 'VERIFIED'
+    ) {
       return (
         <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
           <CheckCircle className="w-3.5 h-3.5" />
-          <span>Confirmed</span>
+          <span>{order.orderStatus === 'CONFIRMED' ? 'Confirmed' : 'Payment Verified'}</span>
         </span>
       );
     }
@@ -740,8 +754,10 @@ export const AdminOrdersPage: React.FC = () => {
 
                         <td className="px-4 py-3.5 text-right">
                           <div className="flex items-center justify-end space-x-2">
-                            {/* If pending confirmation, show Approve button */}
-                            {order.orderStatus !== 'CONFIRMED' && (
+                            {/* If pending confirmation, show Approve/Reject button; if confirmed, show Resend Pass */}
+                            {order.orderStatus !== 'CONFIRMED' &&
+                            order.orderStatus !== 'PAYMENT_VERIFIED' &&
+                            order.paymentStatus !== 'VERIFIED' ? (
                               <div className="flex items-center space-x-1">
                                 <button
                                   onClick={() => handleApprovePayment(order, 'APPROVE')}
@@ -766,6 +782,20 @@ export const AdminOrdersPage: React.FC = () => {
                                   <X className="w-4 h-4" />
                                 </button>
                               </div>
+                            ) : (
+                              <button
+                                onClick={() => handleResend(order)}
+                                disabled={resendingId === order.id}
+                                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition border border-slate-700 disabled:opacity-50"
+                                title="Resend Entry Pass & Confirmation Email"
+                              >
+                                {resendingId === order.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-pip-400" />
+                                ) : (
+                                  <Mail className="w-3.5 h-3.5 text-pip-400" />
+                                )}
+                                <span className="hidden sm:inline">Resend Pass</span>
+                              </button>
                             )}
 
                             {/* Edit Buyer Details */}
@@ -776,23 +806,6 @@ export const AdminOrdersPage: React.FC = () => {
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
-
-                            {/* Trigger Resend Confirmation */}
-                            {order.orderStatus === 'CONFIRMED' && (
-                              <button
-                                onClick={() => handleResend(order)}
-                                disabled={resendingId === order.id}
-                                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition border border-slate-700 disabled:opacity-50"
-                                title="Resend Confirmation Email"
-                              >
-                                {resendingId === order.id ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-pip-400" />
-                                ) : (
-                                  <Mail className="w-3.5 h-3.5 text-slate-400" />
-                                )}
-                                <span className="hidden sm:inline">Resend Email</span>
-                              </button>
-                            )}
 
                             {/* Expand Row details */}
                             <button

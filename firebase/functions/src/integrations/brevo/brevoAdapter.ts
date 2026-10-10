@@ -69,12 +69,25 @@ function postJSON(
 
 /**
  * Sends transactional email via Brevo REST API v3.
- * Gracefully logs to console in staging/dev if API key is not set.
  */
 export async function sendTransactionalEmail(input: SendEmailInput): Promise<SendEmailResult> {
-  const apiKey = BREVO_API_KEY.value();
-  const senderEmail = BREVO_SENDER_EMAIL.value();
-  const senderName = BREVO_SENDER_NAME.value();
+  let apiKey = process.env.BREVO_API_KEY;
+  try {
+    const val = BREVO_API_KEY.value();
+    if (val) apiKey = val;
+  } catch {}
+
+  let senderEmail = process.env.BREVO_SENDER_EMAIL || 'tickets@rotaractjpnagar.org';
+  try {
+    const val = BREVO_SENDER_EMAIL.value();
+    if (val) senderEmail = val;
+  } catch {}
+
+  let senderName = process.env.BREVO_SENDER_NAME || 'Party In Pink 5.0';
+  try {
+    const val = BREVO_SENDER_NAME.value();
+    if (val) senderName = val;
+  } catch {}
 
   if (!apiKey) {
     return {

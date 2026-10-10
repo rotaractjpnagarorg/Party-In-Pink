@@ -74,7 +74,11 @@ export async function processEmailJob(
     let statusUrl: string | undefined;
     let pan: string | null = null;
     let utr: string | null = null;
-    const baseUrl = PUBLIC_WEB_URL.value().replace(/\/$/, '');
+    let baseUrl = 'https://pip.rotaractjpnagar.org';
+    try {
+      const u = PUBLIC_WEB_URL.value();
+      if (u) baseUrl = u.replace(/\/$/, '');
+    } catch {}
 
     let registrationId: string | null = (job as any).registrationId || null;
     let ticketPdfUrl: string | null = (job as any).ticketPdfUrl || null;

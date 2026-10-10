@@ -48,6 +48,15 @@ export const adminApprovePayment = onCall(
         notes: notes || undefined,
       });
 
+      if (decision === 'APPROVE' && result.ticketJobId) {
+        try {
+          const { processTicketJob } = await import('../tickets/ticketWorker.js');
+          await processTicketJob(result.ticketJobId);
+        } catch (tErr) {
+          console.warn('[Admin Approve Payment] Immediate ticket processing deferred to queue worker:', tErr);
+        }
+      }
+
       return result;
     } catch (err: any) {
       console.error('[Admin Approve Payment] Error:', err);

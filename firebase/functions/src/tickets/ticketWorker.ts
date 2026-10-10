@@ -10,21 +10,28 @@ import {
   type TicketJob,
 } from '@pip/shared';
 import {
-  issueKonfHubPasses,
   type KonfHubAttendee,
 } from '../integrations/konfhub/konfhubAdapter.js';
 import { requireAdminRole } from '../middleware/adminAuthorization.js';
 import { konfHubSecrets } from '../config/secrets.js';
 import {
   notifySlackTicketIssued,
-  notifySlackTicketFailed,
 } from '../integrations/slack/slackNotifier.js';
 
 async function ensureTicketEmailJobs(
   order: Order,
   attendees: KonfHubAttendee[],
   nowIso: string,
-  result?: import('../integrations/konfhub/konfhubAdapter.js').IssuePassesResult
+  result?: {
+    ticketDetails: Array<{
+      attendeeId?: string;
+      email: string;
+      registrationId: string;
+      bookingId?: string | null;
+      ticketPdfUrl?: string | null;
+    }>;
+    ticketZipUrl?: string | null;
+  }
 ): Promise<void> {
   const isDonorOrder =
     order.id.startsWith('DONOR_') ||
@@ -276,67 +283,78 @@ export async function processTicketJob(
       ? 'BULK'
       : 'SINGLE';
 
-  // 3. Invoke KonfHub Adapter
-  let result;
-  try {
-    result = await issueKonfHubPasses({
-      orderType,
-      orderReference: order.publicReference,
-      attendees: attendeesToFulfill,
-      organisationName: order.organisationName,
-      onChunkIssued: async (attendeeIds, details) => {
-        attendeeIds.forEach((id) => fulfilledIds.add(id));
-        await jobRef.update({
-          status: TicketStatuses.ISSUING,
-          fulfilledAttendeeIds: [...fulfilledIds],
-          lastCompletedChunk: details,
-          leaseExpiresAt: new Date(Date.now() + 2 * 60 * 1000).toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unexpected KonfHub error';
-    await jobRef.update({
-      status: TicketStatuses.REVIEW_REQUIRED,
-      attempts: (job.attempts || 0) + 1,
-      leaseExpiresAt: null,
-      lastError: message,
-      updatedAt: nowIso,
-    });
+  // 3. Issue Native Gate Passes (Primary Mode)
+  // KonfHub reached capacity (100 free ticket ceiling, ASC-25 Sold Out).
+  // Native Gate Pass issuance is now primary, generating unique PIP5-REG- / PIP5-BUL- / PIP5-DON- passes.
+  const orderCore = (order.publicReference || order.id).replace(/^PIP5-(S|B|D)-/, '');
+  const prefix =
+    orderType === 'BULK' ? 'PIP5-BUL-' : orderType === 'DONOR' ? 'PIP5-DON-' : 'PIP5-REG-';
+
+  const ticketDetails: Array<{
+    attendeeId: string;
+    email: string;
+    registrationId: string;
+    bookingId: null;
+    ticketPdfUrl: null;
+  }> = attendeesToFulfill.map((att, idx) => {
+    const globalIdx = (job.fulfilledAttendeeIds?.length || 0) + idx;
+    const suffix =
+      allAttendees.length > 1 ? `-P${String(globalIdx + 1).padStart(2, '0')}` : '';
+    const regId = `${prefix}${orderCore}${suffix}`;
     return {
-      success: false,
-      message: `KonfHub fulfilment requires review: ${message}`,
+      attendeeId: att.id || `${order.id}_${idx + 1}`,
+      email: att.email,
+      registrationId: regId,
+      bookingId: null,
+      ticketPdfUrl: null,
     };
-  }
+  });
 
   const nextAttempts = (job.attempts || 0) + 1;
-  const newlyFulfilledIds = result.ticketDetails.flatMap((detail) =>
-    detail.attendeeId ? [detail.attendeeId] : []
-  );
+  const newlyFulfilledIds = ticketDetails.map((d) => d.attendeeId);
   newlyFulfilledIds.forEach((id) => fulfilledIds.add(id));
-  const allFulfilled = allAttendees.every(
-    (attendee) => attendee.id && fulfilledIds.has(attendee.id)
-  );
 
-  if (allFulfilled) {
-    // Checkpoint provider results first so a crash can resume without reissuing passes.
-    await jobRef.update({
-      status: TicketStatuses.ISSUING,
-      attempts: nextAttempts,
-      fulfilledAttendeeIds: [...fulfilledIds],
-      providerResult: {
-        ...result,
-        previouslyFulfilledCount: (job.fulfilledAttendeeIds || []).length,
+  // Checkpoint provider results
+  await jobRef.update({
+    status: TicketStatuses.ISSUING,
+    attempts: nextAttempts,
+    fulfilledAttendeeIds: [...fulfilledIds],
+    providerResult: {
+      mode: 'NATIVE_GATE_PASS',
+      success: true,
+      issuedCount: ticketDetails.length,
+      ticketDetails,
+      previouslyFulfilledCount: (job.fulfilledAttendeeIds || []).length,
+    },
+    updatedAt: nowIso,
+  });
+
+  // Update individual attendees
+  const batch = db.batch();
+  if (attendeesSnapshot.empty) {
+    // Single order fallback: ensure attendee doc exists in order subcollection for scanner
+    const singleAttRef = orderRef.collection('attendees').doc(order.id);
+    const detail = ticketDetails[0];
+    batch.set(
+      singleAttRef,
+      {
+        id: order.id,
+        orderId: order.id,
+        fullName: order.buyer.fullName,
+        email: order.buyer.email,
+        mobileNumber: order.buyer.mobileNumber,
+        whatsappNumber: order.buyer.whatsappNumber || null,
+        ticketStatus: TicketStatuses.ISSUED,
+        registrationId: detail?.registrationId || `${prefix}${orderCore}`,
+        createdAt: nowIso,
+        updatedAt: nowIso,
       },
-      updatedAt: nowIso,
-    });
-
-    // Update individual attendees
-    const batch = db.batch();
+      { merge: true }
+    );
+  } else {
     attendeesSnapshot.docs.forEach((doc) => {
       if (fulfilledIds.has(doc.id)) {
-        const detail = result.ticketDetails.find(
+        const detail = ticketDetails.find(
           (d) =>
             d.attendeeId === doc.id ||
             d.email.toLowerCase() === doc.data().email?.toLowerCase()
@@ -344,128 +362,61 @@ export async function processTicketJob(
         batch.update(doc.ref, {
           ticketStatus: TicketStatuses.ISSUED,
           ...(detail?.registrationId ? { registrationId: detail.registrationId } : {}),
-          ...(detail?.bookingId ? { bookingId: detail.bookingId } : {}),
-          ...(detail?.ticketPdfUrl ? { ticketPdfUrl: detail.ticketPdfUrl } : {}),
           updatedAt: nowIso,
         });
       }
     });
-    await batch.commit();
-
-    // Complete the job/order and enqueue exactly one delivery email atomically.
-    await ensureTicketEmailJobs(order, allAttendees, nowIso, result);
-    const completionBatch = db.batch();
-    completionBatch.update(jobRef, {
-      status: TicketStatuses.ISSUED,
-      ticketEmailEnqueued: true,
-      attempts: nextAttempts,
-      fulfilledAttendeeIds: [...fulfilledIds],
-      providerResult: {
-        ...result,
-        previouslyFulfilledCount: (job.fulfilledAttendeeIds || []).length,
-      },
-      leaseExpiresAt: null,
-      lastError: null,
-      updatedAt: nowIso,
-    });
-    completionBatch.update(orderRef, {
-      orderStatus: OrderStatuses.CONFIRMED,
-      fulfilmentStatus: 'FULFILLED',
-      ticketCount: allAttendees.length,
-      ...(result.ticketDetails[0]?.ticketPdfUrl
-        ? { ticketPdfUrl: result.ticketDetails[0].ticketPdfUrl }
-        : {}),
-      ...(result.ticketZipUrl ? { ticketZipUrl: result.ticketZipUrl } : {}),
-      updatedAt: nowIso,
-    });
-    await completionBatch.commit();
-
-    // Post real-time ticket confirmation to Slack channel
-    try {
-      const firstRegId = result.ticketDetails[0]?.registrationId;
-      const cleanRegId =
-        firstRegId && !firstRegId.startsWith('KH-EXISTING')
-          ? firstRegId
-          : order.publicReference;
-
-      await notifySlackTicketIssued({
-        orderReference: order.publicReference,
-        buyerName: order.buyer.fullName,
-        buyerEmail: order.buyer.email,
-        ticketCount: allAttendees.length,
-        registrationId: cleanRegId,
-      });
-    } catch (slackErr) {
-      console.warn('[TicketWorker] Slack ticket confirmation warning (non-blocking):', slackErr);
-    }
-
-    return {
-      success: true,
-      message: `Successfully issued ${allAttendees.length} KonfHub passes for ${order.publicReference}.`,
-    };
-  } else {
-    // Preserve completed attendees. Ambiguous timeouts require human reconciliation before retry.
-    const isMaxAttempts = nextAttempts >= (job.maxAttempts || 5);
-    const hasAmbiguousFailure = result.errors.some((error) => error.ambiguous);
-    const newStatus = hasAmbiguousFailure
-      ? TicketStatuses.REVIEW_REQUIRED
-      : isMaxAttempts
-        ? TicketStatuses.FAILED
-        : TicketStatuses.RETRYING;
-
-    // Persist successful attendee IDs before secondary writes so retries never resubmit them.
-    await jobRef.update({
-      status: newStatus,
-      attempts: nextAttempts,
-      fulfilledAttendeeIds: [...fulfilledIds],
-      providerResult: {
-        ...result,
-        previouslyFulfilledCount: (job.fulfilledAttendeeIds || []).length,
-      },
-      lastError: JSON.stringify(result.errors),
-      leaseExpiresAt: null,
-      updatedAt: nowIso,
-    });
-
-    const attendeeBatch = db.batch();
-    attendeesSnapshot.docs.forEach((doc) => {
-      if (newlyFulfilledIds.includes(doc.id)) {
-        attendeeBatch.update(doc.ref, {
-          ticketStatus: TicketStatuses.ISSUED,
-          updatedAt: nowIso,
-        });
-      }
-    });
-    await attendeeBatch.commit();
-
-    await orderRef.update({
-      fulfilmentStatus: fulfilledIds.size > 0 ? 'PARTIAL' : 'PENDING',
-      ticketCount: fulfilledIds.size,
-      updatedAt: nowIso,
-    });
-
-    console.error(
-      `[TicketWorker] KonfHub issuance failed for ${order.publicReference} (attempt ${nextAttempts}/${job.maxAttempts || 5}). Payment remains VERIFIED.`
-    );
-
-    // Notify Slack channel of fulfilment issue
-    try {
-      await notifySlackTicketFailed({
-        orderReference: order.publicReference,
-        buyerName: order.buyer.fullName,
-        buyerEmail: order.buyer.email,
-        ticketCount: allAttendees.length,
-        error: result.errors[0]?.error ? String(result.errors[0].error) : 'KonfHub pass issuance encountered an issue',
-      });
-    } catch (slackErr) {
-      console.warn('[TicketWorker] Slack ticket failure alert warning (non-blocking):', slackErr);
-    }
-
-    return {
-      success: false,
-      message: `KonfHub ticketing failed for ${order.publicReference}. Status set to ${newStatus}.`,
-    };
   }
+  await batch.commit();
+
+  // Complete the job/order and enqueue ticket pass delivery email
+  await ensureTicketEmailJobs(order, allAttendees, nowIso, {
+    ticketDetails,
+  });
+
+  const completionBatch = db.batch();
+  completionBatch.update(jobRef, {
+    status: TicketStatuses.ISSUED,
+    ticketEmailEnqueued: true,
+    attempts: nextAttempts,
+    fulfilledAttendeeIds: [...fulfilledIds],
+    providerResult: {
+      mode: 'NATIVE_GATE_PASS',
+      success: true,
+      issuedCount: ticketDetails.length,
+      ticketDetails,
+      previouslyFulfilledCount: (job.fulfilledAttendeeIds || []).length,
+    },
+    leaseExpiresAt: null,
+    lastError: null,
+    updatedAt: nowIso,
+  });
+  completionBatch.update(orderRef, {
+    orderStatus: OrderStatuses.CONFIRMED,
+    fulfilmentStatus: 'FULFILLED',
+    ticketCount: allAttendees.length,
+    updatedAt: nowIso,
+  });
+  await completionBatch.commit();
+
+  // Post real-time ticket confirmation to Slack channel
+  try {
+    const firstRegId = ticketDetails[0]?.registrationId || `${prefix}${orderCore}`;
+    await notifySlackTicketIssued({
+      orderReference: order.publicReference,
+      buyerName: order.buyer.fullName,
+      buyerEmail: order.buyer.email,
+      ticketCount: allAttendees.length,
+      registrationId: firstRegId,
+    });
+  } catch (slackErr) {
+    console.warn('[TicketWorker] Slack ticket confirmation warning (non-blocking):', slackErr);
+  }
+
+  return {
+    success: true,
+    message: `Successfully issued ${allAttendees.length} native gate passes for ${order.publicReference}.`,
+  };
 }
 
 /**

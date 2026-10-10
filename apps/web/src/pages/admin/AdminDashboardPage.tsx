@@ -135,7 +135,11 @@ export const AdminDashboardPage: React.FC = () => {
           m.singleOrders++;
         }
 
-        if (d.orderStatus === 'CONFIRMED') {
+        if (
+          d.orderStatus === 'CONFIRMED' ||
+          d.orderStatus === 'PAYMENT_VERIFIED' ||
+          d.paymentStatus === 'VERIFIED'
+        ) {
           m.confirmedTicketsCount += d.participantCount || 1;
           m.verifiedTicketsPaise += d.totalAmountPaise || 0;
 

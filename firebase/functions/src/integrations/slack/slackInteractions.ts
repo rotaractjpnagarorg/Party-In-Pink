@@ -155,13 +155,23 @@ export const slackInteractions = onRequest(
       );
 
       // Call authoritative payment approval service
-      await processPaymentApproval({
+      const approvalResult = await processPaymentApproval({
         paymentId,
         decision,
         actor,
         source: 'SLACK',
         notes: `Processed via Slack interaction by @${slackUser}`,
       });
+
+      // Trigger immediate pass issuance and delivery
+      if (decision === 'APPROVE' && approvalResult.ticketJobId) {
+        try {
+          const { processTicketJob } = await import('../../tickets/ticketWorker.js');
+          await processTicketJob(approvalResult.ticketJobId);
+        } catch (tErr) {
+          console.warn('[Slack Interactions] Immediate ticket processing deferred to queue worker:', tErr);
+        }
+      }
 
       // Prepare resolution status badge
       const nowFormatted = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
